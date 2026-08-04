@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — SecureBank Passwordless Auth{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md">
+
+  <!-- Authenticated Banner (shown if session exists) -->
+  <div id="auth-banner" class="hidden mb-6 glass-panel p-4 rounded-2xl border-indigo-500/30 text-center animate-fade-in">
+    <div class="inline-flex p-3 rounded-full bg-indigo-500/20 text-indigo-400 mb-2">
+      <i class="fas fa-user-check text-2xl"></i>
+    </div>
+    <h3 class="text-lg font-bold text-white">Active Session Detected</h3>
+    <p class="text-xs text-gray-400 mt-1">You are already authenticated on this device.</p>
+    <div class="mt-4 flex items-center justify-center gap-3">
+      <a href="/dashboard" class="px-4 py-2 rounded-xl btn-primary text-xs font-semibold">Go to Dashboard</a>
+      <button onclick="handleLogout()" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Main Auth Card -->
+  <div id="login-card" class="glass-panel p-6 sm:p-8 rounded-3xl relative overflow-hidden">
+    <!-- Ambient Background Glow -->
+    <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+    <!-- Header & Subtitle -->
+    <div class="text-center mb-8">
+      <h2 class="text-2xl font-bold tracking-tight text-white font-heading">Passwordless Banking</h2>
+      <p class="text-xs text-gray-400 mt-1">Secure biometric passkeys & cryptographic device trust.</p>
+    </div>
+
+    <!-- Tab Headers -->
+    <div class="flex border-b border-white/10 mb-6">
+      <button id="tab-login-btn" onclick="switchTab('login')" class="flex-1 py-2.5 text-center text-sm font-semibold border-b-2 border-indigo-500 text-indigo-400 transition-colors">
+        <i class="fas fa-lock-open mr-1.5"></i> Sign In
+      </button>
+      <button id="tab-reg-btn" onclick="switchTab('register')" class="flex-1 py-2.5 text-center text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+        <i class="fas fa-user-plus mr-1.5"></i> Register
+      </button>
+    </div>
+
+    <!-- TAB 1: SIGN IN FORM -->
+    <div id="form-login" class="space-y-5">
+      <div>
+        <label for="login-email" class="block text-xs font-medium text-gray-300 mb-1.5">Account Email</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+            <i class="fas fa-envelope"></i>
+          </span>
+          <input type="email" id="login-email" placeholder="customer@securebank.com" class="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-sm placeholder-gray-500 focus:outline-none" required />
+        </div>
+      </div>
+
+      <!-- Authentication Method Buttons -->
+      <div class="space-y-3 pt-2">
+        <!-- WebAuthn Passkey Button -->
+        <button onclick="handleWebAuthnLogin(event)" class="w-full py-3 px-4 rounded-xl btn-primary flex items-center justify-center gap-2.5 text-sm font-semibold shadow-lg shadow-indigo-500/20 group">
+          <i class="fas fa-fingerprint text-lg text-indigo-200 group-hover:scale-110 transition-transform"></i>
+          <span>Sign In with Passkey / Biometrics</span>
+        </button>
+
+        <div class="relative flex py-2 items-center">
+          <div class="flex-grow border-t border-white/10"></div>
+          <span class="flex-shrink mx-3 text-[11px] text-gray-500 uppercase tracking-widest font-semibold">Or Alternative</span>
+          <div class="flex-grow border-t border-white/10"></div>
+        </div>
+
+        <!-- Email OTP Trigger Button -->
+        <div class="flex gap-2">
+          <button id="btn-send-otp" onclick="handleSendOTP()" class="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-emerald-400 flex items-center justify-center gap-2 transition-colors">
+            <i class="fas fa-paper-plane"></i> Send One-Time Email Code
+          </button>
+        </div>
+      </div>
+
+      <!-- OTP Verification Input Section (hidden until OTP sent) -->
+      <div id="otp-section" class="hidden pt-4 border-t border-white/10 space-y-3 animate-fade-in">
+        <label for="otp-code" class="block text-xs font-medium text-emerald-400">Enter 6-Digit Email Code</label>
+        <div class="flex gap-2">
+          <input type="text" id="otp-code" maxlength="6" placeholder="123456" class="w-full px-4 py-2.5 rounded-xl glass-input text-center tracking-widest font-mono text-base text-emerald-300 focus:outline-none" />
+          <button id="btn-verify-otp" onclick="handleVerifyOTP(event)" class="py-2.5 px-5 rounded-xl btn-emerald text-xs font-semibold flex-shrink-0">
+            Verify & Sign In
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: REGISTER FORM -->
+    <div id="form-reg" class="hidden space-y-4">
+      <div>
+        <label for="reg-name" class="block text-xs font-medium text-gray-300 mb-1">Full Name</label>
+        <input type="text" id="reg-name" placeholder="Alice Smith" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm placeholder-gray-500 focus:outline-none" />
+      </div>
+
+      <div>
+        <label for="reg-email" class="block text-xs font-medium text-gray-300 mb-1">Email Address</label>
+        <input type="email" id="reg-email" placeholder="alice@securebank.com" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm placeholder-gray-500 focus:outline-none" required />
+      </div>
+
+      <button id="btn-register" onclick="handleRegister(event)" class="w-full py-3 px-4 rounded-xl btn-emerald flex items-center justify-center gap-2 text-sm font-semibold shadow-lg shadow-emerald-500/20 mt-4">
+        <i class="fas fa-user-check"></i> Create Account & Register Device
+      </button>
+
+      <p class="text-[11px] text-gray-400 text-center mt-2">
+        After creation, you will be prompted to register your hardware passkey or biometrics for instant passwordless logins.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- Security Feature Badges -->
+  <div class="grid grid-cols-3 gap-3 mt-6 text-center">
+    <div class="glass-panel p-3 rounded-2xl border-white/5">
+      <i class="fas fa-shield-cat text-indigo-400 text-lg mb-1"></i>
+      <p class="text-[11px] font-semibold text-gray-300">FIDO2 / WebAuthn</p>
+      <p class="text-[9px] text-gray-500">Hardware Bound</p>
+    </div>
+    <div class="glass-panel p-3 rounded-2xl border-white/5">
+      <i class="fas fa-fingerprint text-emerald-400 text-lg mb-1"></i>
+      <p class="text-[11px] font-semibold text-gray-300">Zero Passwords</p>
+      <p class="text-[9px] text-gray-500">Phishing Proof</p>
+    </div>
+    <div class="glass-panel p-3 rounded-2xl border-white/5">
+      <i class="fas fa-key text-cyan-400 text-lg mb-1"></i>
+      <p class="text-[11px] font-semibold text-gray-300">Hashed OTP</p>
+      <p class="text-[9px] text-gray-500">5-Min Ephemeral</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
