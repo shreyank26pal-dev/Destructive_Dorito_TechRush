@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Section B Test Page — WebAuthn + OTP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8 font-sans">
+  <div class="max-w-md mx-auto bg-white rounded-lg shadow p-6 space-y-6">
+    <h1 class="text-xl font-bold">Section B Test Console</h1>
+    <p class="text-sm text-gray-500">
+      For local testing only — this bypasses Section A's registration UI.
+      Create a test user directly in the DB or via /docs before using this page.
+    </p>
+
+    <div class="space-y-2">
+      <label class="block text-sm font-medium">Email</label>
+      <input id="email" type="email" class="w-full border rounded p-2" placeholder="test@example.com" />
+    </div>
+
+    <hr />
+
+    <div class="space-y-2">
+      <h2 class="font-semibold">Biometric (WebAuthn)</h2>
+      <button onclick="registerBiometric()" class="bg-blue-600 text-white px-4 py-2 rounded w-full">
+        Register Biometric
+      </button>
+      <button onclick="loginBiometric()" class="bg-green-600 text-white px-4 py-2 rounded w-full">
+        Login with Biometric
+      </button>
+    </div>
+
+    <hr />
+
+    <div class="space-y-2">
+      <h2 class="font-semibold">OTP</h2>
+      <button onclick="sendOtp()" class="bg-purple-600 text-white px-4 py-2 rounded w-full">
+        Send OTP
+      </button>
+      <input id="otpCode" type="text" class="w-full border rounded p-2" placeholder="Enter 6-digit code" />
+      <button onclick="verifyOtp()" class="bg-purple-800 text-white px-4 py-2 rounded w-full">
+        Verify OTP
+      </button>
+    </div>
+
+    <hr />
+
+    <div class="space-y-2">
+      <h2 class="font-semibold">QR Cross-Device Login</h2>
+      <button onclick="qrGenerate()" class="bg-orange-600 text-white px-4 py-2 rounded w-full">
+        Generate QR Token (untrusted device)
+      </button>
+      <div id="qrTokenDisplay" class="text-xs break-all bg-gray-100 p-2 rounded"></div>
+      <input id="qrToken" type="text" class="w-full border rounded p-2" placeholder="Paste token to approve" />
+      <button onclick="qrApprove()" class="bg-orange-800 text-white px-4 py-2 rounded w-full">
+        Approve (simulates already-logged-in phone)
+      </button>
+      <button onclick="qrCheckStatus()" class="bg-orange-400 text-white px-4 py-2 rounded w-full">
+        Check Status Once (simulates untrusted device polling)
+      </button>
+    </div>
+
+    <hr />
+
+    <div class="space-y-2">
+      <h2 class="font-semibold">Step-Up Auth (requires being logged in first)</h2>
+      <p class="text-xs text-gray-500">Log in via biometric or OTP above first, then test this.</p>
+      <input id="stepUpCode" type="text" class="w-full border rounded p-2" placeholder="Enter 6-digit code" />
+      <button onclick="stepUpVerify()" class="bg-red-700 text-white px-4 py-2 rounded w-full">
+        Verify Step-Up OTP
+      </button>
+    </div>
+
+    <pre id="output" class="bg-gray-900 text-green-400 text-xs p-3 rounded overflow-auto max-h-64"></pre>
+  </div>
+
+<script>
+const output = (data) => {
+  document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+};
+
+// Base64url <-> ArrayBuffer helpers required for WebAuthn browser calls
+function bufferToBase64url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let str = "";
+  for (const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function base64urlToBuffer(base64url) {
+  const padding = "=".repeat((4 - (base64url.length % 4)) % 4);
+  const base64 = (base64url + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const buffer = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) buffer[i] = raw.charCodeAt(i);
+  return buffer.buffer;
+}
+
+async function registerBiometric() {
+  const email = document.getElementById("email").value;
+  const optRes = await fetch("/api/security/webauthn/register-options", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const optJson = await optRes.json();
+  if (optJson.status === "error") return output(optJson);
+
+  const options = optJson.data;
+  options.challenge = base64urlToBuffer(options.challenge);
+  options.user.id = base64urlToBuffer(options.user.id);
+  if (options.excludeCredentials) {
+    options.excludeCredentials.forEach(c => c.id = base64urlToBuffer(c.id));
+  }
+
+  const credential = await navigator.credentials.create({ publicKey: options });
+
+  const credentialJson = {
+    id: credential.id,
+    rawId: bufferToBase64url(credential.rawId),
+    type: credential.type,
+    response: {
+      attestationObject: bufferToBase64url(credential.response.attestationObject),
+      clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+    },
+  };
+
+  const verifyRes = await fetch("/api/security/webauthn/register-verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, credential: credentialJson }),
+  });
+  output(await verifyRes.json());
+}
+
+async function loginBiometric() {
+  const email = document.getElementById("email").value;
+  const optRes = await fetch("/api/security/webauthn/login-options", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const optJson = await optRes.json();
+  if (optJson.status === "error") return output(optJson);
+
+  const options = optJson.data;
+  options.challenge = base64urlToBuffer(options.challenge);
+  if (options.allowCredentials) {
+    options.allowCredentials.forEach(c => c.id = base64urlToBuffer(c.id));
+  }
+
+  const credential = await navigator.credentials.get({ publicKey: options });
+
+  const credentialJson = {
+    id: credential.id,
+    rawId: bufferToBase64url(credential.rawId),
+    type: credential.type,
+    response: {
+      authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+      clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+      signature: bufferToBase64url(credential.response.signature),
+      userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null,
+    },
+  };
+
+  const verifyRes = await fetch("/api/security/webauthn/login-verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, credential: credentialJson, device_fingerprint: "test-device" }),
+  });
+  output(await verifyRes.json());
+}
+
+async function sendOtp() {
+  const email = document.getElementById("email").value;
+  const res = await fetch("/api/security/otp/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  output(await res.json());
+}
+
+async function verifyOtp() {
+  const email = document.getElementById("email").value;
+  const code = document.getElementById("otpCode").value;
+  const res = await fetch("/api/security/otp/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code, device_fingerprint: "test-device" }),
+  });
+  output(await res.json());
+}
+
+async function qrGenerate() {
+  const res = await fetch("/api/security/qr/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ device_fingerprint: "untrusted-test-device" }),
+  });
+  const json = await res.json();
+  output(json);
+  if (json.status === "success") {
+    document.getElementById("qrTokenDisplay").textContent = "Token: " + json.data.token;
+    document.getElementById("qrToken").value = json.data.token;
+  }
+}
+
+async function qrApprove() {
+  const email = document.getElementById("email").value;
+  const token = document.getElementById("qrToken").value;
+  const res = await fetch("/api/security/qr/approve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, email }),
+  });
+  output(await res.json());
+}
+
+async function qrCheckStatus() {
+  const token = document.getElementById("qrToken").value;
+  const res = await fetch(`/api/security/qr/status/${token}`);
+  output(await res.json());
+}
+
+async function stepUpVerify() {
+  const email = document.getElementById("email").value;
+  const code = document.getElementById("stepUpCode").value;
+  const res = await fetch("/api/security/step-up/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  output(await res.json());
+}
+</script>
+</body>
+</html>
