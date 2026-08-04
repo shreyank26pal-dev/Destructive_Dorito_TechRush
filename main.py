@@ -43,9 +43,14 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
 
 
-@app.get("/")
-def root():
-    return {"message": "SecureBank Demo API is running. Visit /docs for the API explorer."}
+@app.get("/", response_class=HTMLResponse)
+def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard_page(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @app.get("/health")
