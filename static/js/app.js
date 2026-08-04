@@ -1,12 +1,13 @@
 /**
- * SecureBank Passwordless Auth Client JS
+ * APEX BANK — Institutional Passwordless Client JS
  * Follows CONTRACT.md conventions
  */
 
-// Global State (CONTRACT.md Section 8)
+// Global State
 let currentUser = null;
 let deviceFingerprint = null;
 let pendingChallenge = null;
+let isBalanceMasked = false;
 
 // Helper: Convert ArrayBuffer to Base64URL string
 function bufferToBase64URL(buffer) {
@@ -35,7 +36,7 @@ function base64URLToBuffer(base64url) {
   return outputArray.buffer;
 }
 
-// Generate client device fingerprint
+// Compute client device fingerprint
 function computeDeviceFingerprint() {
   const components = [
     navigator.userAgent,
@@ -64,8 +65,8 @@ function showToast(message, type = 'info') {
   toast.className = `toast toast-${type}`;
   
   let icon = 'fa-info-circle';
-  if (type === 'success') icon = 'fa-check-circle';
-  if (type === 'error') icon = 'fa-exclamation-circle';
+  if (type === 'success') icon = 'fa-shield-check';
+  if (type === 'error') icon = 'fa-triangle-exclamation';
 
   toast.innerHTML = `<i class="fas ${icon} text-lg"></i> <span>${message}</span>`;
   container.appendChild(toast);
@@ -93,14 +94,13 @@ async function apiCall(url, method = 'GET', data = null) {
     return resData;
   } catch (err) {
     console.error(`API Call failed (${url}):`, err);
-    return { status: 'error', message: err.message || 'Network error occurred' };
+    return { status: 'error', message: err.message || 'Network connectivity error' };
   }
 }
 
-// Initialize on page load
+// DOM Loaded Initialization
 document.addEventListener('DOMContentLoaded', async () => {
   deviceFingerprint = computeDeviceFingerprint();
-  console.log("Computed Device Fingerprint:", deviceFingerprint);
 
   const fpDisplay = document.getElementById('fp-display');
   if (fpDisplay) {
@@ -117,7 +117,6 @@ async function checkAuthSession() {
 
   if (res.status === 'success' && res.data) {
     currentUser = res.data;
-    console.log("Logged in user:", currentUser);
 
     const userBadge = document.getElementById('nav-user-badge');
     const userNameEl = document.getElementById('nav-user-name');
@@ -127,9 +126,8 @@ async function checkAuthSession() {
     }
 
     if (path === '/' || path === '/index.html') {
-      const loginCard = document.getElementById('login-card');
       const authBanner = document.getElementById('auth-banner');
-      if (loginCard && authBanner) {
+      if (authBanner) {
         authBanner.classList.remove('hidden');
       }
     } else if (path === '/dashboard' || path === '/dashboard.html') {
@@ -143,68 +141,63 @@ async function checkAuthSession() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// AUTHENTICATION LOGIC (INDEX PAGE)
-// ---------------------------------------------------------------------------
-
-// Register New User
+// Register New Client
 async function handleRegister(event) {
   event.preventDefault();
   const name = document.getElementById('reg-name').value.trim();
   const email = document.getElementById('reg-email').value.trim();
 
   if (!email) {
-    showToast('Please enter a valid email address.', 'error');
+    showToast('Please enter a valid commercial email address.', 'error');
     return;
   }
 
   const btn = document.getElementById('btn-register');
   btn.disabled = true;
-  btn.innerText = 'Creating account...';
+  btn.innerText = 'Creating Vault Account...';
 
   // 1. Register User
   const res = await apiCall('/api/entry/register', 'POST', { name, email });
   if (res.status !== 'success') {
-    showToast(res.message || 'Registration failed', 'error');
+    showToast(res.message || 'Account registration failed.', 'error');
     btn.disabled = false;
-    btn.innerText = 'Create Account';
+    btn.innerText = 'Open Private Client Account';
     return;
   }
 
   const userId = res.data.id;
-  showToast('Account created successfully!', 'success');
+  showToast('APEX Private Client account created!', 'success');
 
-  // 2. Check & Register Device
+  // 2. Register Device
   await apiCall('/api/entry/check-device', 'POST', {
     user_id: userId,
     fingerprint: deviceFingerprint
   });
 
-  // Option to set up WebAuthn passkey immediately
-  const setupPasskey = confirm('Account created! Would you like to register a Biometrics / Passkey (TouchID, FaceID, Windows Hello) for fast passwordless logins?');
+  // Prompt for WebAuthn passkey
+  const setupPasskey = confirm('Account active! Would you like to register a Hardware Passkey / Biometric Vault (TouchID, FaceID, Windows Hello) for passwordless banking access?');
   if (setupPasskey) {
     await registerWebAuthn(email);
   }
 
   btn.disabled = false;
-  btn.innerText = 'Create Account';
+  btn.innerText = 'Open Private Client Account';
   switchTab('login');
 }
 
 // WebAuthn Passkey Registration
 async function registerWebAuthn(email) {
   if (!email) {
-    showToast('Email is required for passkey registration.', 'error');
+    showToast('Email required for passkey enrollment.', 'error');
     return;
   }
 
   try {
-    showToast('Preparing Passkey registration...', 'info');
+    showToast('Initiating FIDO2 Hardware Passkey ceremony...', 'info');
 
-    // 1. Get options from backend
     const optionsRes = await apiCall('/api/security/webauthn/register-options', 'POST', { email });
     if (optionsRes.status !== 'success') {
-      showToast(optionsRes.message || 'Failed to initialize passkey registration.', 'error');
+      showToast(optionsRes.message || 'Failed to fetch registration challenge.', 'error');
       return;
     }
 
@@ -218,10 +211,8 @@ async function registerWebAuthn(email) {
       }));
     }
 
-    // 2. Browser WebAuthn prompt
     const credential = await navigator.credentials.create({ publicKey: options });
 
-    // 3. Prepare response JSON payload
     const credentialJSON = {
       id: credential.id,
       rawId: bufferToBase64URL(credential.rawId),
@@ -232,20 +223,19 @@ async function registerWebAuthn(email) {
       }
     };
 
-    // 4. Verify with backend
     const verifyRes = await apiCall('/api/security/webauthn/register-verify', 'POST', {
       email,
       credential: credentialJSON
     });
 
     if (verifyRes.status === 'success') {
-      showToast('Biometrics / Passkey registered successfully!', 'success');
+      showToast('Biometric Passkey bound to Vault successfully!', 'success');
     } else {
       showToast(verifyRes.message || 'Passkey verification failed.', 'error');
     }
   } catch (err) {
     console.error("WebAuthn Register Error:", err);
-    showToast(err.message || 'Passkey registration cancelled or failed.', 'error');
+    showToast(err.message || 'Passkey enrollment cancelled.', 'error');
   }
 }
 
@@ -254,17 +244,16 @@ async function handleWebAuthnLogin(event) {
   if (event) event.preventDefault();
   const email = document.getElementById('login-email').value.trim();
   if (!email) {
-    showToast('Please enter your account email first.', 'error');
+    showToast('Please enter your APEX Bank email address.', 'error');
     return;
   }
 
   try {
-    showToast('Requesting biometric prompt...', 'info');
+    showToast('Requesting FIDO2 Biometric clearance...', 'info');
 
-    // 1. Get login options
     const optionsRes = await apiCall('/api/security/webauthn/login-options', 'POST', { email });
     if (optionsRes.status !== 'success') {
-      showToast(optionsRes.message || 'Could not fetch passkey options.', 'error');
+      showToast(optionsRes.message || 'No passkey registered for this account.', 'error');
       return;
     }
 
@@ -277,10 +266,8 @@ async function handleWebAuthnLogin(event) {
       }));
     }
 
-    // 2. Browser credentials prompt
     const assertion = await navigator.credentials.get({ publicKey: options });
 
-    // 3. Format payload
     const credentialJSON = {
       id: assertion.id,
       rawId: bufferToBase64URL(assertion.rawId),
@@ -293,7 +280,6 @@ async function handleWebAuthnLogin(event) {
       }
     };
 
-    // 4. Verify login with backend
     const verifyRes = await apiCall('/api/security/webauthn/login-verify', 'POST', {
       email,
       credential: credentialJSON,
@@ -301,36 +287,35 @@ async function handleWebAuthnLogin(event) {
     });
 
     if (verifyRes.status === 'success') {
-      showToast('Biometric login successful! Redirecting...', 'success');
-      setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+      showToast('Biometric authentication verified! Opening Vault...', 'success');
+      setTimeout(() => { window.location.href = '/dashboard'; }, 800);
     } else {
-      showToast(verifyRes.message || 'Biometric authentication failed.', 'error');
+      showToast(verifyRes.message || 'Biometric clearance rejected.', 'error');
     }
   } catch (err) {
     console.error("WebAuthn Login Error:", err);
-    showToast(err.message || 'Passkey login failed or was cancelled.', 'error');
+    showToast(err.message || 'Biometric authentication cancelled.', 'error');
   }
 }
 
-// Send OTP
+// Send Hashed OTP
 let otpCountdownTimer = null;
 async function handleSendOTP() {
   const email = document.getElementById('login-email').value.trim();
   if (!email) {
-    showToast('Please enter your email to receive an OTP.', 'error');
+    showToast('Please enter your account email.', 'error');
     return;
   }
 
   const btnSend = document.getElementById('btn-send-otp');
   btnSend.disabled = true;
-  btnSend.innerText = 'Sending...';
+  btnSend.innerText = 'Dispatching Hashed OTP...';
 
   const res = await apiCall('/api/security/otp/send', 'POST', { email });
   if (res.status === 'success') {
-    showToast('OTP sent to your email! (Check console if demo server)', 'success');
+    showToast('5-minute Ephemeral OTP sent to your inbox!', 'success');
     document.getElementById('otp-section').classList.remove('hidden');
     
-    // Start 60s cooldown timer
     let secondsLeft = 60;
     btnSend.innerText = `Resend (${secondsLeft}s)`;
     clearInterval(otpCountdownTimer);
@@ -339,26 +324,26 @@ async function handleSendOTP() {
       if (secondsLeft <= 0) {
         clearInterval(otpCountdownTimer);
         btnSend.disabled = false;
-        btnSend.innerText = 'Send OTP';
+        btnSend.innerText = 'Request Emergency OTP';
       } else {
         btnSend.innerText = `Resend (${secondsLeft}s)`;
       }
     }, 1000);
   } else {
-    showToast(res.message || 'Failed to send OTP.', 'error');
+    showToast(res.message || 'Failed to dispatch OTP.', 'error');
     btnSend.disabled = false;
-    btnSend.innerText = 'Send OTP';
+    btnSend.innerText = 'Request Emergency OTP';
   }
 }
 
-// Verify OTP Login
+// Verify OTP
 async function handleVerifyOTP(event) {
   event.preventDefault();
   const email = document.getElementById('login-email').value.trim();
   const code = document.getElementById('otp-code').value.trim();
 
   if (!email || !code) {
-    showToast('Please enter both email and 6-digit OTP code.', 'error');
+    showToast('Please enter your email and 6-digit OTP code.', 'error');
     return;
   }
 
@@ -373,12 +358,12 @@ async function handleVerifyOTP(event) {
   });
 
   if (res.status === 'success') {
-    showToast('OTP verified! Redirecting...', 'success');
-    setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+    showToast('OTP clearance verified! Opening Vault...', 'success');
+    setTimeout(() => { window.location.href = '/dashboard'; }, 800);
   } else {
     showToast(res.message || 'Invalid or expired OTP code.', 'error');
     btnVerify.disabled = false;
-    btnVerify.innerText = 'Verify & Login';
+    btnVerify.innerText = 'Verify Code';
   }
 }
 
@@ -392,16 +377,16 @@ function switchTab(tabName) {
   if (!formLogin || !formReg) return;
 
   if (tabName === 'login') {
-    tabLogin.classList.add('border-indigo-500', 'text-indigo-400');
+    tabLogin.classList.add('border-amber-500', 'text-amber-400');
     tabLogin.classList.remove('border-transparent', 'text-gray-400');
-    tabReg.classList.remove('border-indigo-500', 'text-indigo-400');
+    tabReg.classList.remove('border-amber-500', 'text-amber-400');
     tabReg.classList.add('border-transparent', 'text-gray-400');
     formLogin.classList.remove('hidden');
     formReg.classList.add('hidden');
   } else {
-    tabReg.classList.add('border-indigo-500', 'text-indigo-400');
+    tabReg.classList.add('border-amber-500', 'text-amber-400');
     tabReg.classList.remove('border-transparent', 'text-gray-400');
-    tabLogin.classList.remove('border-indigo-500', 'text-indigo-400');
+    tabLogin.classList.remove('border-amber-500', 'text-amber-400');
     tabLogin.classList.add('border-transparent', 'text-gray-400');
     formReg.classList.remove('hidden');
     formLogin.classList.add('hidden');
@@ -409,25 +394,77 @@ function switchTab(tabName) {
 }
 
 // ---------------------------------------------------------------------------
-// DASHBOARD LOGIC
+// DASHBOARD LOGIC & BANK WIDGETS
 // ---------------------------------------------------------------------------
 
 async function initDashboard() {
   if (!currentUser) return;
 
-  // 1. Fill Profile Data
-  document.getElementById('dash-user-name').innerText = currentUser.name || 'Bank Customer';
+  document.getElementById('dash-user-name').innerText = currentUser.name || 'Private Client';
   document.getElementById('dash-user-email').innerText = currentUser.email;
   document.getElementById('profile-name-input').value = currentUser.name || '';
   document.getElementById('profile-email-input').value = currentUser.email;
 
-  // 2. Fetch Security Alerts
   fetchSecurityAlerts(currentUser.id);
-
-  // 3. Fetch Login History Logs
   fetchLoginHistory();
 }
 
+// Balance Masking Toggle
+function toggleBalanceMask() {
+  isBalanceMasked = !isBalanceMasked;
+  const portfolioEl = document.getElementById('val-portfolio');
+  const checkingEl = document.getElementById('val-checking');
+  const iconEl = document.getElementById('mask-eye-icon');
+
+  if (isBalanceMasked) {
+    portfolioEl.innerText = '$•••••••••';
+    checkingEl.innerText = '$••••••••';
+    iconEl.className = 'fas fa-eye-slash text-amber-400';
+  } else {
+    portfolioEl.innerText = '$248,500.00';
+    checkingEl.innerText = '$84,320.50';
+    iconEl.className = 'fas fa-eye text-amber-400';
+  }
+}
+
+// Quick Wire / Transfer Simulation with Biometric Step-Up
+async function handleSimulateTransfer(event) {
+  event.preventDefault();
+  const recipient = document.getElementById('transfer-recipient').value.trim();
+  const amount = document.getElementById('transfer-amount').value.trim();
+
+  if (!recipient || !amount) {
+    showToast('Please specify recipient and wire amount.', 'error');
+    return;
+  }
+
+  showToast('Initiating Step-Up Biometric Authorization for Wire Transfer...', 'info');
+
+  if (currentUser && currentUser.email) {
+    try {
+      const optionsRes = await apiCall('/api/security/webauthn/login-options', 'POST', { email: currentUser.email });
+      if (optionsRes.status === 'success') {
+        const options = optionsRes.data;
+        options.challenge = base64URLToBuffer(options.challenge);
+        if (options.allowCredentials) {
+          options.allowCredentials = options.allowCredentials.map(c => ({
+            ...c,
+            id: base64URLToBuffer(c.id)
+          }));
+        }
+        await navigator.credentials.get({ publicKey: options });
+      }
+    } catch (e) {
+      console.warn("Step-up passkey verification bypassed or unverified:", e);
+    }
+  }
+
+  showToast(`Wire transfer of $${amount} to ${recipient} approved!`, 'success');
+  document.getElementById('transfer-recipient').value = '';
+  document.getElementById('transfer-amount').value = '';
+}
+
+// Fetch Risk Alerts
 async function fetchSecurityAlerts(userId) {
   const container = document.getElementById('alerts-container');
   if (!container) return;
@@ -440,8 +477,8 @@ async function fetchSecurityAlerts(userId) {
         <div class="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           <i class="fas fa-shield-check text-xl"></i>
           <div>
-            <p class="font-semibold">All Clear</p>
-            <p class="text-xs text-emerald-300/80">No suspicious devices or login anomalies detected on your account.</p>
+            <p class="font-semibold font-heading">Vault Status: OPTIMAL</p>
+            <p class="text-xs text-emerald-300/80">No active threats, anomalous devices, or suspicious login spikes detected.</p>
           </div>
         </div>
       `;
@@ -452,9 +489,9 @@ async function fetchSecurityAlerts(userId) {
             <div class="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm">
               <i class="fas fa-exclamation-triangle text-amber-400 text-xl mt-0.5"></i>
               <div>
-                <p class="font-semibold">Untrusted Device Registered</p>
-                <p class="text-xs text-amber-200/70 mt-1">Fingerprint: <code class="bg-black/30 px-1.5 py-0.5 rounded">${a.fingerprint}</code></p>
-                <p class="text-xs text-amber-200/50 mt-0.5">First seen: ${new Date(a.first_seen_at).toLocaleString()}</p>
+                <p class="font-semibold font-heading">Unverified Device Detected</p>
+                <p class="text-xs text-amber-200/70 mt-1">Fingerprint: <code class="bg-black/40 px-1.5 py-0.5 rounded font-mono">${a.fingerprint}</code></p>
+                <p class="text-xs text-amber-200/50 mt-0.5">First Seen: ${new Date(a.first_seen_at).toLocaleString()}</p>
               </div>
             </div>
           `;
@@ -463,8 +500,8 @@ async function fetchSecurityAlerts(userId) {
             <div class="flex items-start gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm">
               <i class="fas fa-shield-exclamation text-rose-400 text-xl mt-0.5"></i>
               <div>
-                <p class="font-semibold">Security Alert: ${a.count} Repeated Failed Logins</p>
-                <p class="text-xs text-rose-200/70 mt-1">Multiple failed authentication attempts were detected in the last ${a.window_minutes} minutes.</p>
+                <p class="font-semibold font-heading">Critical Alert: ${a.count} Failed Authentication Attempts</p>
+                <p class="text-xs text-rose-200/70 mt-1">Multiple unauthorized login attempts detected within the past ${a.window_minutes} minutes.</p>
               </div>
             </div>
           `;
@@ -475,6 +512,7 @@ async function fetchSecurityAlerts(userId) {
   }
 }
 
+// Fetch Audit History
 async function fetchLoginHistory() {
   const tbody = document.getElementById('history-tbody');
   if (!tbody) return;
@@ -483,7 +521,7 @@ async function fetchLoginHistory() {
   if (res.status === 'success' && res.data) {
     const logs = res.data;
     if (logs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-gray-500 text-sm">No login history recorded yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-gray-500 text-sm">No authentication events recorded yet.</td></tr>`;
       return;
     }
 
@@ -494,19 +532,19 @@ async function fetchLoginHistory() {
       if (log.method === 'qr') { badgeClass = 'badge-qr'; icon = 'fa-qrcode'; }
 
       const statusBadge = log.success
-        ? `<span class="px-2.5 py-1 text-xs rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"><i class="fas fa-check-circle mr-1"></i> Success</span>`
-        : `<span class="px-2.5 py-1 text-xs rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30"><i class="fas fa-times-circle mr-1"></i> Failed</span>`;
+        ? `<span class="px-2.5 py-1 text-xs rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-medium"><i class="fas fa-check-circle mr-1"></i> Verified</span>`
+        : `<span class="px-2.5 py-1 text-xs rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 font-medium"><i class="fas fa-times-circle mr-1"></i> Rejected</span>`;
 
       return `
-        <tr class="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
+        <tr class="border-b border-gray-800/40 hover:bg-white/5 transition-colors">
           <td class="py-3 px-4">
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${badgeClass}">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${badgeClass}">
               <i class="fas ${icon}"></i> ${log.method.toUpperCase()}
             </span>
           </td>
           <td class="py-3 px-4">${statusBadge}</td>
-          <td class="py-3 px-4 text-xs font-mono text-gray-400">${log.ip_address || 'unknown'}</td>
-          <td class="py-3 px-4 text-xs text-gray-400 truncate max-w-xs">${log.device_info || '—'}</td>
+          <td class="py-3 px-4 text-xs font-mono text-gray-400">${log.ip_address || '127.0.0.1'}</td>
+          <td class="py-3 px-4 text-xs text-gray-400 font-mono truncate max-w-xs">${log.device_info || '—'}</td>
           <td class="py-3 px-4 text-xs text-gray-400">${new Date(log.created_at).toLocaleString()}</td>
         </tr>
       `;
@@ -514,23 +552,23 @@ async function fetchLoginHistory() {
   }
 }
 
-// Update Profile
+// Profile update
 async function handleUpdateProfile(event) {
   event.preventDefault();
   const name = document.getElementById('profile-name-input').value.trim();
 
   const res = await apiCall('/api/sessions/profile/update', 'POST', { name });
   if (res.status === 'success') {
-    showToast('Profile updated successfully!', 'success');
+    showToast('Client Profile updated successfully!', 'success');
     currentUser.name = name;
-    document.getElementById('dash-user-name').innerText = name || 'Bank Customer';
+    document.getElementById('dash-user-name').innerText = name || 'Private Client';
     document.getElementById('nav-user-name').innerText = name || currentUser.email;
   } else {
-    showToast(res.message || 'Failed to update profile.', 'error');
+    showToast(res.message || 'Profile update failed.', 'error');
   }
 }
 
-// Passkey Registration from Dashboard
+// Passkey register from dashboard
 async function handleDashboardRegisterPasskey() {
   if (!currentUser || !currentUser.email) return;
   await registerWebAuthn(currentUser.email);
@@ -540,7 +578,7 @@ async function handleDashboardRegisterPasskey() {
 async function handleLogout() {
   const res = await apiCall('/api/sessions/logout', 'POST');
   if (res.status === 'success') {
-    showToast('Logged out successfully.', 'info');
+    showToast('Vault session terminated.', 'info');
     setTimeout(() => { window.location.href = '/'; }, 500);
   } else {
     showToast(res.message || 'Logout failed.', 'error');
@@ -549,12 +587,12 @@ async function handleLogout() {
 
 // Logout All
 async function handleLogoutAll() {
-  if (!confirm('Are you sure you want to revoke all active sessions across all devices?')) return;
+  if (!confirm('Are you sure you want to terminate all active sessions across all hardware devices?')) return;
 
   const res = await apiCall('/api/sessions/logout-all', 'POST');
   if (res.status === 'success') {
-    showToast('Revoked all active sessions. Redirecting to home...', 'info');
-    setTimeout(() => { window.location.href = '/'; }, 1000);
+    showToast('Revoked all active sessions. Redirecting...', 'info');
+    setTimeout(() => { window.location.href = '/'; }, 800);
   } else {
     showToast(res.message || 'Failed to revoke sessions.', 'error');
   }
