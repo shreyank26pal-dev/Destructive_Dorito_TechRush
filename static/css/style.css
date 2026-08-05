@@ -1,163 +1,273 @@
-/* APEX BANK — Executive Glassmorphism & Financial Design System */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+/* iProov Security Enterprise Design System & Bootstrap 5 Customizations */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
 
 :root {
-  --bg-dark: #080B12;
-  --bg-card: rgba(15, 22, 36, 0.7);
-  --bg-card-hover: rgba(26, 38, 61, 0.8);
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --border-gold: rgba(245, 158, 11, 0.35);
-  --border-blue: rgba(59, 130, 246, 0.3);
-  
-  --accent-gold: #F59E0B;
-  --accent-gold-hover: #D97706;
-  --accent-sapphire: #3B82F6;
-  --accent-emerald: #10B981;
-  --accent-rose: #F43F5E;
-
-  --text-main: #F8FAFC;
-  --text-muted: #94A3B8;
-  --text-gold: #FBBF24;
+  --brand-orange: #FF6700;
+  --brand-orange-hover: #E55C00;
+  --brand-navy: #002838;
+  --brand-navy-dark: #001C27;
+  --brand-teal: #051923;
+  --brand-light: #F4F7F9;
+  --brand-text-dark: #0A1926;
+  --brand-text-muted: #5A6E7F;
+  --brand-border: #E2E8F0;
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: var(--bg-dark);
-  color: var(--text-main);
-  background-image: 
-    radial-gradient(at 10% 10%, rgba(245, 158, 11, 0.08) 0px, transparent 45%),
-    radial-gradient(at 90% 15%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
-    radial-gradient(at 50% 85%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
-  background-attachment: fixed;
-  min-height: 100vh;
+  color: var(--brand-text-dark);
+  background-color: #FFFFFF;
 }
 
 h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: 'Outfit', sans-serif;
 }
 
-/* Luxury Glassmorphism Panels */
-.glass-panel {
-  background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-glass);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+/* Top Announcement Banner (Orange) */
+.top-audit-banner {
+  background-color: var(--brand-orange);
+  color: #FFFFFF;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  text-align: center;
 }
 
-.glass-panel-gold {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 22, 36, 0.8) 100%);
-  border: 1px solid var(--border-gold);
-}
-
-.glass-panel-hover {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.glass-panel-hover:hover {
-  background: var(--bg-card-hover);
-  border-color: rgba(245, 158, 11, 0.4);
-  transform: translateY(-2px);
-}
-
-.glass-input {
-  background: rgba(10, 15, 26, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--text-main);
-  transition: all 0.2s ease;
-}
-
-.glass-input:focus {
-  outline: none;
-  border-color: var(--accent-gold);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
-  background: rgba(10, 15, 26, 0.95);
-}
-
-/* Executive Buttons */
-.btn-gold {
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-  color: #0F172A;
+.top-audit-banner a {
+  color: #FFFFFF;
+  text-decoration: underline;
   font-weight: 700;
-  transition: all 0.2s ease;
 }
 
-.btn-gold:hover {
-  background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%);
-  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-  transform: translateY(-1px);
+.top-audit-banner a:hover {
+  color: #FFF0E6;
 }
 
-.btn-sapphire {
-  background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
-  color: white;
+/* Top Utility Strip */
+.top-utility-bar {
+  background-color: var(--brand-navy-dark);
+  color: #A0B2C6;
+  font-size: 0.75rem;
+  padding: 0.35rem 2rem;
+  text-align: right;
+  letter-spacing: 0.05em;
   font-weight: 600;
+}
+
+.top-utility-bar a {
+  color: #D0DFEE;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.top-utility-bar a:hover {
+  color: var(--brand-orange);
+}
+
+/* Main Navigation Bar (Clean White) */
+.iproov-navbar {
+  background-color: #FFFFFF;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+}
+
+.iproov-navbar .nav-link {
+  color: var(--brand-navy) !important;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+  transition: color 0.2s ease;
+}
+
+.iproov-navbar .nav-link:hover {
+  color: var(--brand-orange) !important;
+}
+
+/* Orange CTA Button */
+.btn-iproov-orange {
+  background-color: var(--brand-orange);
+  color: #FFFFFF !important;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 2rem;
+  border-radius: 0;
+  border: none;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.btn-sapphire:hover {
-  background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-  transform: translateY(-1px);
+.btn-iproov-orange:hover {
+  background-color: var(--brand-orange-hover);
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 18px rgba(255, 103, 0, 0.3);
 }
 
-.btn-emerald {
-  background: linear-gradient(135deg, #10B981 0%, #047857 100%);
-  color: white;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.btn-emerald:hover {
-  background: linear-gradient(135deg, #34D399 0%, #059669 100%);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-  transform: translateY(-1px);
-}
-
-/* Metallic Credit/Debit Card Styling */
-.bank-card-gold {
-  background: linear-gradient(135deg, #1E293B 0%, #0F172A 50%, #1E1B4B 100%);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+/* Hero Section (Deep Navy) */
+.iproov-hero-section {
+  background-color: var(--brand-navy);
+  color: #FFFFFF;
+  padding-top: 5rem;
+  padding-bottom: 5rem;
   position: relative;
   overflow: hidden;
 }
 
-.bank-card-gold::before {
+.iproov-hero-section::after {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, transparent 60%);
+  top: 0;
+  right: 0;
+  width: 50%;
+  height: 100%;
+  background: radial-gradient(circle at 80% 50%, rgba(255, 103, 0, 0.12) 0%, transparent 60%);
   pointer-events: none;
 }
 
-/* Badges & Indicators */
-.badge-webauthn {
-  background: rgba(245, 158, 11, 0.15);
-  color: #FBBF24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+.iproov-hero-title {
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
 }
 
-.badge-otp {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60A5FA;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+@media (min-width: 992px) {
+  .iproov-hero-title {
+    font-size: 3.5rem;
+  }
 }
 
-.badge-qr {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34D399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+.iproov-hero-subtitle {
+  font-size: 1.15rem;
+  color: #B0C4D8;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+/* Right Floating Utility Dock */
+#floating-dock {
+  position: fixed;
+  right: 0;
+  top: 35%;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 15px rgba(0, 0, 0, 0.15);
+}
+
+.dock-item {
+  background-color: var(--brand-orange);
+  color: #FFFFFF;
+  width: 60px;
+  height: 65px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.dock-item:hover {
+  background-color: var(--brand-orange-hover);
+  color: #FFFFFF;
+  width: 70px;
+}
+
+.dock-item i {
+  font-size: 1.1rem;
+  margin-bottom: 0.2rem;
+}
+
+/* Accessibility Float Button */
+#accessibility-btn {
+  position: fixed;
+  right: 0;
+  bottom: 20px;
+  z-index: 999;
+  background-color: var(--brand-orange);
+  color: #FFFFFF;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+/* Bottom Cookie Consent Banner */
+#cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: #FFFFFF;
+  border-top: 1px solid #E2E8F0;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+  padding: 1.25rem 2rem;
+}
+
+.btn-cookie-settings {
+  background-color: var(--brand-orange);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+}
+
+.btn-cookie-reject {
+  background-color: var(--brand-navy);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+}
+
+.btn-cookie-accept {
+  background-color: var(--brand-navy-dark);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+}
+
+/* Cards & Modals */
+.iproov-card {
+  background: #FFFFFF;
+  border: 1px solid var(--brand-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.iproov-dark-card {
+  background: rgba(5, 25, 35, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
 }
 
 /* Toast Container */
 #toast-container {
   position: fixed;
   bottom: 1.5rem;
-  right: 1.5rem;
+  left: 1.5rem;
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -165,38 +275,17 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   max-width: 420px;
 }
 
-.toast {
-  padding: 1rem 1.25rem;
-  border-radius: 1rem;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+.toast-item {
+  padding: 0.85rem 1.25rem;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   gap: 0.75rem;
   font-size: 0.875rem;
-  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  color: #FFFFFF;
 }
 
-.toast-success {
-  background: rgba(16, 185, 129, 0.2);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #ECFDF5;
-}
-
-.toast-error {
-  background: rgba(244, 63, 94, 0.2);
-  border: 1px solid rgba(244, 63, 94, 0.4);
-  color: #FFF1F2;
-}
-
-.toast-info {
-  background: rgba(245, 158, 11, 0.2);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  color: #FEF3C7;
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(100%); }
-  to { opacity: 1; transform: translateX(0); }
-}
+.toast-item-success { background-color: #10B981; }
+.toast-item-error { background-color: #F43F5E; }
+.toast-item-info { background-color: var(--brand-orange); }

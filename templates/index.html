@@ -1,133 +1,171 @@
 {% extends "base.html" %}
 
-{% block title %}Sign In — APEX BANK Private Client Vault{% endblock %}
+{% block title %}iProov — Onboard And Authenticate Your Users In Seconds{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-lg">
+<!-- Hero Section (iProov Style) -->
+<section class="iproov-hero-section">
+  <div class="container-fluid px-lg-5">
+    <div class="row align-items-center min-vh-75">
+      
+      <!-- Hero Left Text -->
+      <div class="col-lg-7 mb-5 mb-lg-0">
+        <div class="d-inline-flex align-items-center gap-2 px-3 py-1 bg-white bg-opacity-10 border border-white border-opacity-20 text-warning text-uppercase fw-bold mb-4 rounded-pill small">
+          <i class="fas fa-microchip"></i> Science-Based Biometric Verification
+        </div>
+        
+        <h1 class="iproov-hero-title">
+          Onboard And Authenticate Your Users In Seconds With Science-Based Biometrics
+        </h1>
+        
+        <p class="iproov-hero-subtitle">
+          iProov provides market-leading biometric solutions that protect the world's most security-conscious organizations against deepfakes, phishing, and identity fraud.
+        </p>
 
-  <!-- Active Session Banner -->
-  <div id="auth-banner" class="hidden mb-6 glass-panel-gold p-4 rounded-2xl text-center animate-fade-in">
-    <div class="inline-flex p-3 rounded-full bg-amber-500/20 text-amber-400 mb-2">
-      <i class="fas fa-user-shield text-2xl"></i>
-    </div>
-    <h3 class="text-lg font-bold text-white font-heading">Active Vault Session Detected</h3>
-    <p class="text-xs text-amber-200/70 mt-1">You are already authenticated with hardware clearance on this terminal.</p>
-    <div class="mt-4 flex items-center justify-center gap-3">
-      <a href="/dashboard" class="px-4 py-2 rounded-xl btn-gold text-xs font-bold">Open Private Vault</a>
-      <button onclick="handleLogout()" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300">Terminate Session</button>
-    </div>
-  </div>
-
-  <!-- Main Banking Portal Card -->
-  <div id="login-card" class="glass-panel p-6 sm:p-9 rounded-3xl relative overflow-hidden">
-    <!-- Ambient Background Glows -->
-    <div class="absolute -top-28 -right-28 w-56 h-56 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-28 -left-28 w-56 h-56 bg-blue-500/15 rounded-full blur-3xl pointer-events-none"></div>
-
-    <!-- Header & Subtitle -->
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold mb-3">
-        <i class="fas fa-vault text-amber-400"></i> FIDO2 Level 3 Hardware Vault
-      </div>
-      <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-white font-heading">Private Client Access</h2>
-      <p class="text-xs text-gray-400 mt-1.5">Zero Passwords. Phishing-Proof Cryptographic Sign-In.</p>
-    </div>
-
-    <!-- Tab Headers -->
-    <div class="flex border-b border-white/10 mb-6">
-      <button id="tab-login-btn" onclick="switchTab('login')" class="flex-1 py-3 text-center text-xs font-bold border-b-2 border-amber-500 text-amber-400 transition-colors uppercase tracking-wider">
-        <i class="fas fa-fingerprint mr-1.5"></i> Vault Sign In
-      </button>
-      <button id="tab-reg-btn" onclick="switchTab('register')" class="flex-1 py-3 text-center text-xs font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors uppercase tracking-wider">
-        <i class="fas fa-user-plus mr-1.5"></i> Open Account
-      </button>
-    </div>
-
-    <!-- TAB 1: SIGN IN FORM -->
-    <div id="form-login" class="space-y-5">
-      <div>
-        <label for="login-email" class="block text-xs font-semibold text-gray-300 mb-1.5">Commercial Account Email</label>
-        <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-amber-400/70">
-            <i class="fas fa-envelope"></i>
-          </span>
-          <input type="email" id="login-email" placeholder="client@apexbank.com" class="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-sm placeholder-gray-500 focus:outline-none" required />
+        <div class="d-flex flex-wrap gap-3">
+          <a href="#auth-section" class="btn btn-iproov-orange py-3 px-4 fs-6">
+            <span>START DEMO AUTHENTICATION</span>
+            <i class="fas fa-arrow-right"></i>
+          </a>
+          <a href="#solutions" class="btn btn-outline-light py-3 px-4 fs-6 fw-bold rounded-0">
+            EXPLORE SOLUTIONS
+          </a>
         </div>
       </div>
 
-      <!-- Authentication Method Actions -->
-      <div class="space-y-3 pt-2">
-        <!-- Passkey / Biometrics Button -->
-        <button onclick="handleWebAuthnLogin(event)" class="w-full py-3.5 px-4 rounded-xl btn-gold flex items-center justify-center gap-3 text-sm shadow-xl group">
-          <i class="fas fa-fingerprint text-lg group-hover:scale-110 transition-transform"></i>
-          <span>Sign In with Passkey / Biometrics</span>
-        </button>
+      <!-- Hero Right Graphic / Interactive Biometric Card -->
+      <div class="col-lg-5">
+        <div class="iproov-dark-card p-4 p-md-5 shadow-lg relative">
+          <!-- Active Session Notice -->
+          <div id="auth-banner" class="d-none mb-4 p-3 bg-warning bg-opacity-20 border border-warning text-warning text-center rounded">
+            <h5 class="fw-bold mb-1"><i class="fas fa-user-check me-2"></i>Active Session Detected</h5>
+            <p class="small mb-3">You are authenticated on this terminal.</p>
+            <a href="/dashboard" class="btn btn-warning btn-sm fw-bold">Open Portal Dashboard</a>
+            <button onclick="handleLogout()" class="btn btn-outline-light btn-sm ms-2">Sign Out</button>
+          </div>
 
-        <div class="relative flex py-2 items-center">
-          <div class="flex-grow border-t border-white/10"></div>
-          <span class="flex-shrink mx-3 text-[10px] text-gray-500 uppercase tracking-widest font-bold">Fallback Authentication</span>
-          <div class="flex-grow border-t border-white/10"></div>
+          <!-- Auth Portal Form Container -->
+          <div id="auth-section">
+            <div class="text-center mb-4">
+              <span class="badge bg-warning text-dark font-mono text-uppercase tracking-wider mb-2">Passwordless Authentication Portal</span>
+              <h3 class="fw-bold text-white mb-1 font-heading">Secure Biometric Sign In</h3>
+              <p class="text-secondary small">Zero passwords. FIDO2 cryptographic verification.</p>
+            </div>
+
+            <!-- Tab Headers -->
+            <ul class="nav nav-tabs nav-justified border-secondary mb-4" id="authTabs">
+              <li class="nav-item">
+                <button class="nav-link active text-warning font-mono fw-bold" id="tab-login-btn" onclick="switchTab('login')">
+                  <i class="fas fa-fingerprint me-1"></i> PASSKEY
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link text-light font-mono fw-bold" id="tab-reg-btn" onclick="switchTab('register')">
+                  <i class="fas fa-user-plus me-1"></i> REGISTER
+                </button>
+              </li>
+            </ul>
+
+            <!-- TAB 1: PASSKEY & OTP LOGIN -->
+            <div id="form-login">
+              <div class="mb-3">
+                <label for="login-email" class="form-label text-light small fw-bold">Account Email</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-dark border-secondary text-warning"><i class="fas fa-envelope"></i></span>
+                  <input type="email" id="login-email" class="form-control bg-dark text-white border-secondary" placeholder="user@company.com" required />
+                </div>
+              </div>
+
+              <!-- Passkey Sign In Button -->
+              <button onclick="handleWebAuthnLogin(event)" class="btn btn-iproov-orange w-100 py-3 mb-3 justify-content-center">
+                <i class="fas fa-fingerprint fs-5 me-1"></i>
+                <span>AUTHENTICATE WITH BIOMETRICS</span>
+              </button>
+
+              <div class="text-center my-3 position-relative">
+                <hr class="border-secondary" />
+                <span class="position-absolute top-50 start-50 translate-middle px-3 bg-dark text-secondary small font-mono">OR OTP</span>
+              </div>
+
+              <!-- OTP Request Button -->
+              <button id="btn-send-otp" onclick="handleSendOTP()" class="btn btn-outline-info w-100 py-2.5 rounded-0 small fw-bold">
+                <i class="fas fa-paper-plane me-1"></i> SEND HASHED EMAIL OTP
+              </button>
+
+              <!-- OTP Verification Input Section -->
+              <div id="otp-section" class="d-none mt-3 p-3 bg-dark border border-secondary rounded">
+                <label for="otp-code" class="form-label text-info small fw-bold">Enter 6-Digit Email Code</label>
+                <div class="input-group">
+                  <input type="text" id="otp-code" maxlength="6" class="form-control bg-black text-center font-mono fs-5 text-info border-secondary" placeholder="123456" />
+                  <button id="btn-verify-otp" onclick="handleVerifyOTP(event)" class="btn btn-info fw-bold">VERIFY</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: REGISTER -->
+            <div id="form-reg" class="d-none">
+              <div class="mb-3">
+                <label for="reg-name" class="form-label text-light small fw-bold">Full Name</label>
+                <input type="text" id="reg-name" class="form-control bg-dark text-white border-secondary" placeholder="Alice Smith" />
+              </div>
+              <div class="mb-3">
+                <label for="reg-email" class="form-label text-light small fw-bold">Email Address</label>
+                <input type="email" id="reg-email" class="form-control bg-dark text-white border-secondary" placeholder="alice@company.com" required />
+              </div>
+              <button id="btn-register" onclick="handleRegister(event)" class="btn btn-warning w-100 py-3 fw-bold rounded-0">
+                <i class="fas fa-user-check me-1"></i> CREATE ACCOUNT & ENROLL BIOMETRICS
+              </button>
+            </div>
+
+          </div>
         </div>
-
-        <!-- Emergency Hashed OTP Button -->
-        <button id="btn-send-otp" onclick="handleSendOTP()" class="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-blue-400 flex items-center justify-center gap-2 transition-colors">
-          <i class="fas fa-paper-plane"></i> Request Emergency Hashed OTP Code
-        </button>
       </div>
 
-      <!-- OTP Input Section (Hidden by default) -->
-      <div id="otp-section" class="hidden pt-4 border-t border-white/10 space-y-3 animate-fade-in">
-        <label for="otp-code" class="block text-xs font-semibold text-blue-400">Enter 6-Digit Emergency OTP</label>
-        <div class="flex gap-2">
-          <input type="text" id="otp-code" maxlength="6" placeholder="882910" class="w-full px-4 py-2.5 rounded-xl glass-input text-center tracking-widest font-mono text-base text-blue-300 focus:outline-none" />
-          <button id="btn-verify-otp" onclick="handleVerifyOTP(event)" class="py-2.5 px-5 rounded-xl btn-sapphire text-xs font-bold flex-shrink-0">
-            Verify Code
-          </button>
-        </div>
-      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Solutions Feature Showcase Section -->
+<section id="solutions" class="py-5 bg-light">
+  <div class="container-fluid px-lg-5 py-4">
+    <div class="text-center max-w-2xl mx-auto mb-5">
+      <span class="badge bg-warning text-dark font-mono text-uppercase tracking-wider mb-2">Science-Based Liveness</span>
+      <h2 class="fw-bold font-heading text-dark display-6">Comprehensive Biometric Security Architecture</h2>
+      <p class="text-secondary">Protecting government, banking, and enterprise applications from sophisticated identity spoofing.</p>
     </div>
 
-    <!-- TAB 2: OPEN ACCOUNT FORM -->
-    <div id="form-reg" class="hidden space-y-4">
-      <div>
-        <label for="reg-name" class="block text-xs font-semibold text-gray-300 mb-1">Full Legal Name</label>
-        <input type="text" id="reg-name" placeholder="Alice Smith" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm placeholder-gray-500 focus:outline-none" />
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="iproov-card p-4 h-100">
+          <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-20 text-warning p-3 rounded mb-3">
+            <i class="fas fa-shield-halved fs-3" style="color: #FF6700;"></i>
+          </div>
+          <h4 class="fw-bold font-heading mb-2">Deepfake & AI Defense</h4>
+          <p class="text-secondary small">Real-time imagery analysis verifying that a genuine person is authenticating in real time, stopping generative AI synthetic face attacks.</p>
+        </div>
       </div>
 
-      <div>
-        <label for="reg-email" class="block text-xs font-semibold text-gray-300 mb-1">Commercial Email Address</label>
-        <input type="email" id="reg-email" placeholder="alice@apexbank.com" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm placeholder-gray-500 focus:outline-none" required />
+      <div class="col-md-4">
+        <div class="iproov-card p-4 h-100">
+          <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary p-3 rounded mb-3">
+            <i class="fas fa-fingerprint fs-3" style="color: #002838;"></i>
+          </div>
+          <h4 class="fw-bold font-heading mb-2">FIDO2 WebAuthn Standard</h4>
+          <p class="text-secondary small">Cryptographic public key pairs stored securely in hardware element chips (Touch ID, Face ID, YubiKeys) for 100% phishing resistance.</p>
+        </div>
       </div>
 
-      <button id="btn-register" onclick="handleRegister(event)" class="w-full py-3 px-4 rounded-xl btn-emerald flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider mt-4">
-        <i class="fas fa-user-check"></i> Open Account & Register Hardware Vault
-      </button>
-
-      <p class="text-[11px] text-gray-400 text-center mt-2 leading-relaxed">
-        Upon account opening, your physical security key or device biometrics (TouchID/FaceID) will be cryptographically registered.
-      </p>
+      <div class="col-md-4">
+        <div class="iproov-card p-4 h-100">
+          <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success p-3 rounded mb-3">
+            <i class="fas fa-mobile-screen-button fs-3 text-success"></i>
+          </div>
+          <h4 class="fw-bold font-heading mb-2">Device Trust & Fingerprinting</h4>
+          <p class="text-secondary small">Continuous hardware fingerprinting identifying untrusted terminals and triggering automatic step-up verification.</p>
+        </div>
+      </div>
     </div>
 
   </div>
-
-  <!-- Trust Badges Grid -->
-  <div class="grid grid-cols-3 gap-3 mt-6 text-center">
-    <div class="glass-panel p-3.5 rounded-2xl border-amber-500/10">
-      <i class="fas fa-shield-halved text-amber-400 text-lg mb-1"></i>
-      <p class="text-[11px] font-bold text-gray-200">Hardware Bound</p>
-      <p class="text-[9px] text-gray-400">WebAuthn Level 3</p>
-    </div>
-    <div class="glass-panel p-3.5 rounded-2xl border-amber-500/10">
-      <i class="fas fa-microchip text-emerald-400 text-lg mb-1"></i>
-      <p class="text-[11px] font-bold text-gray-200">Zero Password</p>
-      <p class="text-[9px] text-gray-400">Phishing Resistance</p>
-    </div>
-    <div class="glass-panel p-3.5 rounded-2xl border-amber-500/10">
-      <i class="fas fa-lock text-blue-400 text-lg mb-1"></i>
-      <p class="text-[11px] font-bold text-gray-200">Hashed Security</p>
-      <p class="text-[9px] text-gray-400">Passlib Crypt</p>
-    </div>
-  </div>
-
-</div>
+</section>
 {% endblock %}

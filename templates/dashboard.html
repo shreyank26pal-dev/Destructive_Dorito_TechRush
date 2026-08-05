@@ -1,224 +1,129 @@
 {% extends "base.html" %}
 
-{% block title %}Private Vault — APEX BANK{% endblock %}
+{% block title %}Security Dashboard — iProov Biometric Portal{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-6xl space-y-6">
+<div class="py-5 bg-light min-vh-100">
+  <div class="container-fluid px-lg-5">
+    
+    <!-- Top Dashboard Header Banner -->
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4" style="background: linear-gradient(135deg, #002838 0%, #051923 100%); color: #FFFFFF;">
+      <div class="card-body p-4 p-md-5">
+        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-4">
+          <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center justify-content-center text-white rounded-circle p-3" style="background-color: #FF6700; width: 60px; height: 60px;">
+              <i class="fas fa-user-shield fs-3"></i>
+            </div>
+            <div>
+              <div class="d-flex align-items-center gap-2">
+                <h2 id="dash-user-name" class="fw-bold mb-0 font-heading">Security Admin</h2>
+                <span class="badge bg-warning text-dark font-mono uppercase">FIDO2 Verified</span>
+              </div>
+              <p id="dash-user-email" class="text-info font-mono small mb-0">loading...</p>
+            </div>
+          </div>
 
-  <!-- Top Executive Header & Financial Summary Cards -->
-  <div class="glass-panel p-6 sm:p-8 rounded-3xl relative overflow-hidden space-y-6">
-    <!-- Top Client Bar -->
-    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-white/10">
-      <div class="flex items-center gap-5">
-        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-600 p-0.5 shadow-xl shadow-amber-500/20 flex-shrink-0">
-          <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-            <i class="fas fa-building-columns text-amber-400 text-2xl"></i>
+          <div class="d-flex gap-2">
+            <button onclick="handleLogout()" class="btn btn-outline-light btn-sm fw-bold rounded-0">
+              <i class="fas fa-power-off me-1"></i> Exit Portal
+            </button>
+            <button onclick="handleLogoutAll()" class="btn btn-danger btn-sm fw-bold rounded-0">
+              <i class="fas fa-ban me-1"></i> Revoke All Sessions
+            </button>
           </div>
         </div>
-        <div>
-          <div class="flex items-center gap-3">
-            <h1 id="dash-user-name" class="text-2xl font-bold text-white font-heading">Private Client</h1>
-            <span class="px-3 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold uppercase tracking-wider">FIDO2 Hardware Cleared</span>
-          </div>
-          <p id="dash-user-email" class="text-xs text-amber-200/70 font-mono mt-1">loading...</p>
-        </div>
-      </div>
-
-      <!-- Quick Session Controls -->
-      <div class="flex items-center gap-3 w-full md:w-auto">
-        <button onclick="toggleBalanceMask()" class="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 flex items-center gap-2 transition-colors">
-          <i id="mask-eye-icon" class="fas fa-eye text-amber-400"></i>
-          <span>Privacy Mode</span>
-        </button>
-        <button onclick="handleLogout()" class="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 flex items-center gap-2 transition-colors">
-          <i class="fas fa-power-off text-gray-400"></i> Exit Vault
-        </button>
-        <button onclick="handleLogoutAll()" class="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-semibold text-rose-300 flex items-center gap-2 transition-colors">
-          <i class="fas fa-ban"></i> Revoke All Sessions
-        </button>
       </div>
     </div>
 
-    <!-- Financial Cards Row -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <!-- Total Portfolio -->
-      <div class="glass-panel-gold p-4 rounded-2xl">
-        <div class="flex items-center justify-between text-xs text-amber-300/80 mb-1 font-semibold">
-          <span>Total Net Portfolio</span>
-          <i class="fas fa-chart-line text-amber-400"></i>
-        </div>
-        <div id="val-portfolio" class="text-2xl font-bold font-heading text-white">$248,500.00</div>
-        <p class="text-[10px] text-amber-400/80 mt-1"><i class="fas fa-arrow-trend-up mr-1"></i>+4.2% YTD Yield</p>
-      </div>
-
-      <!-- Liquid Checking -->
-      <div class="glass-panel p-4 rounded-2xl border-white/10">
-        <div class="flex items-center justify-between text-xs text-gray-400 mb-1 font-semibold">
-          <span>Checking Reserve</span>
-          <i class="fas fa-wallet text-blue-400"></i>
-        </div>
-        <div id="val-checking" class="text-2xl font-bold font-heading text-white">$84,320.50</div>
-        <p class="text-[10px] text-gray-500 mt-1">Available for Instant Wire</p>
-      </div>
-
-      <!-- Security Level Badge Card -->
-      <div class="glass-panel p-4 rounded-2xl border-emerald-500/20 bg-emerald-500/5">
-        <div class="flex items-center justify-between text-xs text-emerald-400 mb-1 font-semibold">
-          <span>Hardware Vault Grade</span>
-          <i class="fas fa-shield-halved text-emerald-400"></i>
-        </div>
-        <div class="text-xl font-bold font-heading text-emerald-300">Level-3 Certified</div>
-        <p class="text-[10px] text-emerald-400/70 mt-1">Phishing-Proof FIDO2 Active</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Middle Grid: Virtual Metal Card, Quick Wire, Risk Center -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    <!-- Virtual Metallic Glass Card Widget & Wire Transfer (2 Cols) -->
-    <div class="lg:col-span-2 space-y-6">
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Interactive Metallic Card -->
-        <div class="bank-card-gold p-6 rounded-3xl flex flex-col justify-between h-56 relative group hover:scale-[1.01] transition-transform">
-          <div class="flex items-center justify-between">
-            <span class="font-heading font-bold text-amber-300 tracking-wider text-sm">APEX PRIVATE WEALTH</span>
-            <i class="fas fa-contactless-payment text-amber-400 text-xl"></i>
+    <!-- Main Grid: Security Risk Center & Passkeys -->
+    <div class="row g-4 mb-4">
+      
+      <!-- Security & Device Risk Center (8 Cols) -->
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-3 p-4 h-100">
+          <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+            <h4 class="fw-bold font-heading mb-0 text-dark">
+              <i class="fas fa-shield-virus text-warning me-2"></i> Security & Device Risk Center
+            </h4>
+            <button onclick="initDashboard()" class="btn btn-outline-dark btn-sm font-mono">
+              <i class="fas fa-sync-alt me-1"></i> Refresh Risk
+            </button>
           </div>
 
-          <div class="my-auto">
-            <div class="w-11 h-8 rounded-md bg-gradient-to-r from-amber-300 to-amber-500 border border-amber-200/50 mb-3 flex items-center justify-center">
-              <div class="w-7 h-5 border border-amber-900/30 rounded-sm"></div>
-            </div>
-            <div class="font-mono text-lg text-white tracking-widest font-bold">•••• •••• •••• 8829</div>
-          </div>
-
-          <div class="flex items-center justify-between text-xs text-gray-300 font-mono">
-            <div>
-              <span class="block text-[9px] text-gray-400 uppercase">Cardholder</span>
-              <span class="font-semibold text-white">PRIVATE CLIENT</span>
-            </div>
-            <div>
-              <span class="block text-[9px] text-gray-400 uppercase">Expires</span>
-              <span class="font-semibold text-white">08/29</span>
-            </div>
-            <i class="fab fa-cc-visa text-white text-2xl"></i>
+          <div id="alerts-container" class="space-y-3">
+            <div class="p-3 bg-light text-muted small">Checking hardware trust and device footprint...</div>
           </div>
         </div>
+      </div>
 
-        <!-- Quick Wire Transfer Simulator -->
-        <div class="glass-panel p-5 rounded-3xl space-y-3">
-          <h3 class="text-sm font-bold text-white font-heading flex items-center gap-2">
-            <i class="fas fa-paper-plane text-amber-400"></i> Wire Transfer Simulator
-          </h3>
-          <p class="text-[11px] text-gray-400">Requires FIDO2 biometric step-up re-authentication.</p>
-          
-          <form onsubmit="handleSimulateTransfer(event)" class="space-y-2.5">
-            <div>
-              <input type="text" id="transfer-recipient" placeholder="Recipient IBAN / Email" class="w-full px-3.5 py-2 rounded-xl glass-input text-xs focus:outline-none" />
+      <!-- Passkeys & Profile (4 Cols) -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3 p-4 h-100">
+          <h4 class="fw-bold font-heading mb-3 text-dark">
+            <i class="fas fa-fingerprint style-orange me-2" style="color: #FF6700;"></i> Enroll Passkey
+          </h4>
+          <p class="text-secondary small mb-3">Add hardware security key or biometrics (Touch ID, Face ID, Windows Hello) to your account.</p>
+          <button onclick="handleDashboardRegisterPasskey()" class="btn btn-iproov-orange w-100 mb-4 justify-content-center">
+            <i class="fas fa-plus-circle me-1"></i> ENROLL NEW PASSKEY
+          </button>
+
+          <hr />
+
+          <h5 class="fw-bold font-heading mb-3 text-dark">
+            <i class="fas fa-user-edit me-2 text-primary"></i> Edit Account Profile
+          </h5>
+          <form onsubmit="handleUpdateProfile(event)">
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-bold">Full Name</label>
+              <input type="text" id="profile-name-input" class="form-control form-control-sm" />
             </div>
-            <div>
-              <input type="number" id="transfer-amount" placeholder="Amount ($USD)" class="w-full px-3.5 py-2 rounded-xl glass-input text-xs focus:outline-none" />
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-bold">Verified Email (Read Only)</label>
+              <input type="email" id="profile-email-input" disabled class="form-control form-control-sm bg-light" />
             </div>
-            <button type="submit" class="w-full py-2.5 px-4 rounded-xl btn-gold text-xs font-bold flex items-center justify-center gap-2">
-              <i class="fas fa-fingerprint"></i> Authorize Wire with Passkey
+            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold rounded-0">
+              SAVE PROFILE CHANGES
             </button>
           </form>
         </div>
       </div>
 
-      <!-- Security & Risk Threat Center -->
-      <div class="glass-panel p-6 rounded-3xl space-y-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-base font-bold text-white font-heading flex items-center gap-2">
-            <i class="fas fa-shield-virus text-amber-400"></i> Security & Device Risk Center
-          </h2>
-          <button onclick="initDashboard()" class="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold">
-            <i class="fas fa-sync-alt"></i> Refresh Risk Status
-          </button>
-        </div>
-
-        <div id="alerts-container" class="space-y-3">
-          <div class="p-4 rounded-xl bg-white/5 animate-pulse text-xs text-gray-400">Analyzing terminal risk footprint...</div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- Passkeys & Profile Panel (1 Col) -->
-    <div class="glass-panel p-6 rounded-3xl space-y-6">
-      
-      <!-- Passkey Vault Section -->
-      <div>
-        <h3 class="text-sm font-bold text-white font-heading mb-2 flex items-center gap-2">
-          <i class="fas fa-fingerprint text-amber-400"></i> Hardware Passkey Vault
-        </h3>
-        <p class="text-xs text-gray-400 mb-3">Register additional physical security keys or biometrics.</p>
-        <button onclick="handleDashboardRegisterPasskey()" class="w-full py-2.5 px-4 rounded-xl btn-emerald text-xs font-bold flex items-center justify-center gap-2">
-          <i class="fas fa-plus-circle"></i> Enroll Hardware Passkey
-        </button>
+    <!-- Bottom: Authentication Audit Log -->
+    <div class="card border-0 shadow-sm rounded-3 p-4">
+      <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+        <div>
+          <h4 class="fw-bold font-heading mb-0 text-dark">
+            <i class="fas fa-history style-orange me-2" style="color: #FF6700;"></i> Cryptographic Audit Log
+          </h4>
+          <p class="text-secondary small mb-0">Immutable record of authentication, passkey, and OTP events.</p>
+        </div>
+        <span class="badge bg-secondary font-mono">Last 25 Events</span>
       </div>
 
-      <hr class="border-white/10" />
-
-      <!-- Profile Update Form -->
-      <div>
-        <h3 class="text-sm font-bold text-white font-heading mb-3 flex items-center gap-2">
-          <i class="fas fa-user-edit text-blue-400"></i> Client Profile Settings
-        </h3>
-        <form onsubmit="handleUpdateProfile(event)" class="space-y-3">
-          <div>
-            <label class="block text-[11px] text-gray-400 mb-1 font-medium">Account Name</label>
-            <input type="text" id="profile-name-input" class="w-full px-3.5 py-2 rounded-xl glass-input text-xs focus:outline-none" />
-          </div>
-          <div>
-            <label class="block text-[11px] text-gray-400 mb-1 font-medium">Verified Email (Read Only)</label>
-            <input type="email" id="profile-email-input" disabled class="w-full px-3.5 py-2 rounded-xl glass-input text-xs text-gray-500 bg-white/5 cursor-not-allowed" />
-          </div>
-          <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold transition-colors">
-            Update Profile
-          </button>
-        </form>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light text-uppercase small font-mono">
+            <tr>
+              <th>Method</th>
+              <th>Status</th>
+              <th>Client IP</th>
+              <th>Device Fingerprint</th>
+              <th>Timestamp (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <tr>
+              <td colspan="5" class="text-center py-4 text-muted small">
+                <i class="fas fa-spinner fa-spin me-2"></i> Loading audit history...
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-
     </div>
 
   </div>
-
-  <!-- Bottom: Authentication Audit Log -->
-  <div class="glass-panel p-6 rounded-3xl space-y-4">
-    <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-base font-bold text-white font-heading flex items-center gap-2">
-          <i class="fas fa-history text-amber-400"></i> Cryptographic Audit Log
-        </h2>
-        <p class="text-xs text-gray-400 mt-0.5">Immutable record of all authentication and verification events.</p>
-      </div>
-      <span class="text-xs text-gray-500 font-mono">Last 25 Events</span>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse">
-        <thead>
-          <tr class="border-b border-white/10 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
-            <th class="py-3 px-4">Method</th>
-            <th class="py-3 px-4">Clearance Status</th>
-            <th class="py-3 px-4">Client IP</th>
-            <th class="py-3 px-4">Device Fingerprint</th>
-            <th class="py-3 px-4">Timestamp (UTC)</th>
-          </tr>
-        </thead>
-        <tbody id="history-tbody">
-          <tr>
-            <td colspan="5" class="py-6 text-center text-gray-500 text-sm">
-              <i class="fas fa-spinner fa-spin mr-2"></i> Loading audit history...
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
 </div>
 {% endblock %}

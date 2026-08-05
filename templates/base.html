@@ -1,87 +1,139 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}APEX BANK — Private Client Vault{% endblock %}</title>
+  <title>{% block title %}iProov — Biometric Authentication & Passwordless Liveness Solutions{% endblock %}</title>
 
-  <!-- Google Fonts & Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Bootstrap 5 CSS & FontAwesome CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
-<body class="flex flex-col min-h-screen">
+<body>
 
-  <!-- Institutional Header -->
-  <header class="border-b border-white/10 backdrop-blur-xl bg-slate-950/80 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-      
-      <!-- APEX Bank Brand Logo -->
-      <a href="/" class="flex items-center gap-3.5 group">
-        <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-600 p-0.5 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
-          <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-            <i class="fas fa-building-columns text-amber-400 text-xl group-hover:text-amber-300 transition-colors"></i>
-          </div>
+  <!-- Top Announcement Banner (Vibrant Orange) -->
+  <div class="top-audit-banner">
+    <span>Think your liveness vendor is deepfake-ready? Take this 7-question audit and uncover hidden security, performance, and inclusivity gaps before attackers do. </span>
+    <a href="#audit-modal" onclick="showToast('Starting 7-question liveness security audit...', 'info')">Take it today!</a>
+  </div>
+
+  <!-- Top Utility Strip -->
+  <div class="top-utility-bar">
+    <div class="container-fluid px-lg-5 flex justify-content-between align-items-center">
+      <div class="d-none d-md-block text-start">
+        <span class="badge bg-light text-dark me-2 font-mono">FIDO2 LEVEL 3</span>
+        <span class="text-light text-opacity-75">Science-Based Passwordless Liveness Verification</span>
+      </div>
+      <div class="text-end">
+        <a href="#contact" class="me-3"><i class="fas fa-headset me-1"></i> CONTACT US</a>
+        <span id="fp-display" class="badge bg-secondary font-mono">detecting device...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Navigation Bar (Clean White) -->
+  <nav class="navbar navbar-expand-lg iproov-navbar sticky-top">
+    <div class="container-fluid px-lg-5">
+      <!-- Brand Logo -->
+      <a class="navbar-brand d-flex items-center gap-2" href="/">
+        <div class="d-flex align-items-center justify-content-center bg-dark text-white rounded p-1" style="width: 36px; height: 36px; background: linear-gradient(135deg, #FF6700 0%, #002838 100%) !important;">
+          <i class="fas fa-shield-halved text-white fs-5"></i>
         </div>
-        <div>
-          <span class="text-xl font-bold font-heading bg-gradient-to-r from-white via-amber-100 to-amber-400 bg-clip-text text-transparent tracking-wide">APEX BANK</span>
-          <div class="flex items-center gap-2">
-            <span class="block text-[9px] text-amber-400/90 tracking-widest uppercase font-bold">Private Client Vault</span>
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-          </div>
-        </div>
+        <span class="fw-bold fs-4 tracking-tight" style="color: #002838; font-family: 'Outfit', sans-serif;">
+          i<span style="color: #FF6700;">Proov</span>
+        </span>
       </a>
 
-      <!-- Security & User Status -->
-      <div class="flex items-center gap-4">
-        <!-- FIDO2 / Device Clearance Badge -->
-        <div class="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
-          <i class="fas fa-shield-halved text-amber-400"></i>
-          <span class="font-semibold">Device ID:</span>
-          <span id="fp-display" class="font-mono text-amber-300">authenticating...</span>
-        </div>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#iproovNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
-        <!-- Authenticated User Menu -->
-        <div id="nav-user-badge" class="hidden flex items-center gap-3 pl-4 border-l border-white/10">
-          <a href="/dashboard" class="flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-amber-400 transition-colors">
-            <div class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <i class="fas fa-user-tie"></i>
-            </div>
-            <span id="nav-user-name">Private Client</span>
-          </a>
-          <button onclick="handleLogout()" title="Terminate Vault Session" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs transition-colors">
-            <i class="fas fa-power-off"></i>
-          </button>
-        </div>
+      <div class="collapse navbar-collapse" id="iproovNav">
+        <ul class="navbar-nav ms-auto me-4 mb-2 mb-lg-0 align-items-center">
+          <li class="nav-item">
+            <a class="nav-link" href="/#solutions">SOLUTIONS</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/#about">ABOUT US</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/#resources">RESOURCES</a>
+          </li>
+          <!-- User Session Link -->
+          <li id="nav-user-badge" class="nav-item d-none ms-lg-3">
+            <a href="/dashboard" class="btn btn-outline-dark btn-sm fw-bold rounded-0 px-3">
+              <i class="fas fa-user-circle me-1 text-warning"></i> <span id="nav-user-name">PORTAL</span>
+            </a>
+          </li>
+        </ul>
+
+        <!-- Orange CTA Button -->
+        <a href="#auth-section" class="btn btn-iproov-orange">
+          <span>DEMO</span>
+          <i class="fas fa-arrow-right"></i>
+        </a>
       </div>
-
     </div>
-  </header>
+  </nav>
+
+  <!-- Right Floating Utility Dock -->
+  <div id="floating-dock">
+    <a href="#search" class="dock-item" onclick="showToast('Search iProov solutions database...', 'info')">
+      <i class="fas fa-magnifying-glass"></i>
+      <span>SEARCH</span>
+    </a>
+    <a href="#auth-section" class="dock-item">
+      <i class="fas fa-play-circle"></i>
+      <span>DEMO</span>
+    </a>
+    <a href="#contact" class="dock-item" onclick="showToast('Connecting to iProov security expert...', 'info')">
+      <i class="fas fa-headset"></i>
+      <span>CONTACT</span>
+    </a>
+  </div>
+
+  <!-- Accessibility Float Button -->
+  <div id="accessibility-btn" title="Accessibility Options" onclick="showToast('Accessibility features active', 'info')">
+    <i class="fas fa-universal-access"></i>
+  </div>
 
   <!-- Main Body Content -->
-  <main class="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-8">
+  <main>
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Institutional Compliance Footer -->
-  <footer class="border-t border-white/10 bg-slate-950/80 py-6 text-center text-xs text-gray-500">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div class="flex items-center gap-2 text-gray-400">
-        <i class="fas fa-shield-cat text-amber-400 text-base"></i>
-        <span>&copy; 2026 APEX Financial Trust. FDIC & FINRA Mocked Security Architecture.</span>
-      </div>
-      <div class="flex items-center gap-4 text-gray-400 font-medium">
-        <span class="flex items-center gap-1.5"><i class="fas fa-fingerprint text-amber-400"></i> FIDO2 / WebAuthn</span>
-        <span class="flex items-center gap-1.5"><i class="fas fa-key text-blue-400"></i> Hashed Ephemeral OTP</span>
-        <span class="flex items-center gap-1.5"><i class="fas fa-microchip text-emerald-400"></i> Cryptographic Hardware Bound</span>
+  <!-- Bottom Cookie Consent Banner -->
+  <div id="cookie-banner">
+    <div class="container-fluid px-lg-5">
+      <div class="row align-items-center">
+        <div class="col-lg-7 mb-3 mb-lg-0">
+          <div class="d-flex align-items-center gap-2">
+            <div class="d-inline-block p-1 bg-dark text-white rounded" style="width: 24px; height: 24px; font-size: 10px; text-align: center;">
+              <i class="fas fa-shield-halved text-warning"></i>
+            </div>
+            <p class="mb-0 text-secondary small">
+              By clicking "Accept All Cookies", you agree to the storing of cookies on your device to enhance site navigation, analyze site usage, and assist in our marketing efforts. <a href="#" class="text-dark fw-bold">See our Cookie Policy</a>
+            </p>
+          </div>
+        </div>
+        <div class="col-lg-5 text-lg-end">
+          <div class="d-flex gap-2 justify-content-lg-end">
+            <button onclick="dismissCookieBanner()" class="btn-cookie-settings">Cookies Settings</button>
+            <button onclick="dismissCookieBanner()" class="btn-cookie-reject">Reject All</button>
+            <button onclick="dismissCookieBanner()" class="btn-cookie-accept">Accept All Cookies</button>
+            <button onclick="dismissCookieBanner()" class="btn border-0 text-secondary"><i class="fas fa-xmark"></i></button>
+          </div>
+        </div>
       </div>
     </div>
-  </footer>
+  </div>
 
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
-  <!-- App Client Scripts -->
+  <!-- Bootstrap 5 JS & App Script -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
