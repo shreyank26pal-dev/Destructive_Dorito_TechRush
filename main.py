@@ -18,7 +18,7 @@ from routers import security
 from routers.auth_entry import router as auth_entry_router
 from routers.sessions import router as sessions_router
 
-app = FastAPI(title="SecureBank Demo — Passwordless Auth")
+app = FastAPI(title="Dorito Vault — Passwordless Auth")
 
 app.add_middleware(
     CORSMiddleware,

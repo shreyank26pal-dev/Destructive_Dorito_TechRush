@@ -1,53 +1,89 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}SecureBank — Passwordless Auth{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#121416" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- Google Fonts & Tailwind CSS CDN -->
+  <title>{% block title %}Dorito Vault — Passwordless Security Core{% endblock %}</title>
+
+  <!-- Google Fonts, Tailwind CSS & FontAwesome -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- QRCode.js library for rendering QR codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Custom Natural Bootstrap Stylesheet -->
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="flex flex-col min-h-screen selection:bg-blue-600 selection:text-white">
 
-  <!-- Navigation Header -->
-  <header class="border-b border-white/10 backdrop-blur-md bg-slate-950/60 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+  <!-- FIRST-LOAD WEBSITE ENTRY ANIMATION OVERLAY -->
+  <div id="intro-overlay">
+    <div class="text-center space-y-5 px-4">
+      <div class="intro-vault-ring mx-auto">
+        <div class="relative w-14 h-14 flex items-center justify-center">
+          <i class="fas fa-shield-cat text-blue-500 text-3xl"></i>
+        </div>
+      </div>
+      <div>
+        <h1 class="text-3xl font-bold font-heading text-white tracking-tight">Dorito Vault</h1>
+        <p class="text-xs font-mono-code text-blue-400 mt-1 uppercase">Bootstrap Security Core</p>
+      </div>
+      <div class="flex items-center justify-center gap-2 text-xs font-mono-code text-gray-400">
+        <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+        <span id="intro-status-text">INITIALIZING BOOTSTRAP VAULT...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Background Canvas -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- Navigation Header (Clean Bootstrap Navbar Style) -->
+  <header class="border-b border-gray-800 bg-gray-900/90 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       
       <!-- Brand Logo -->
       <a href="/" class="flex items-center gap-3 group">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 p-0.5 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-          <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-            <i class="fas fa-shield-halved text-indigo-400 text-lg group-hover:text-emerald-400 transition-colors"></i>
-          </div>
+        <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+          <i class="fas fa-play text-white text-xs transform -rotate-90"></i>
         </div>
         <div>
-          <span class="text-xl font-bold font-heading bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">SecureBank</span>
-          <span class="block text-[10px] text-indigo-400 tracking-wider uppercase font-semibold">Passwordless Core</span>
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-bold text-white tracking-tight">Dorito Vault</span>
+            <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold font-mono-code border border-blue-500/30">FIDO2</span>
+          </div>
         </div>
       </a>
 
-      <!-- Right Navigation & User Status -->
-      <div class="flex items-center gap-4">
-        <!-- Fingerprint Indicator -->
-        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-gray-400">
-          <i class="fas fa-fingerprint text-indigo-400 animate-pulse"></i>
-          <span>Device ID:</span>
-          <span id="fp-display" class="font-mono text-gray-300">detecting...</span>
+      <!-- Right Nav Items -->
+      <div class="flex items-center gap-3">
+        <!-- Hardware Badge -->
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-md bg-gray-800 border border-gray-700 text-xs text-gray-300">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          <i class="fas fa-fingerprint text-blue-400"></i>
+          <span class="text-gray-400 text-[11px]">Hardware ID:</span>
+          <span id="fp-display" class="font-mono-code text-white text-[11px] font-semibold">computing...</span>
         </div>
 
-        <!-- User Badge & Menu -->
-        <div id="nav-user-badge" class="hidden flex items-center gap-3 pl-3 border-l border-white/10">
-          <a href="/dashboard" class="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">
-            <div class="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300">
-              <i class="fas fa-user-circle"></i>
-            </div>
+        <!-- Approve QR Button -->
+        <button onclick="openQrApprovalModal()" title="Simulate Mobile Phone QR Approval" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold transition-all">
+          <i class="fas fa-qrcode text-blue-400"></i>
+          <span class="hidden sm:inline">Approve QR</span>
+        </button>
+
+        <!-- User Profile Menu -->
+        <div id="nav-user-badge" class="hidden flex items-center gap-2 pl-3 border-l border-gray-800">
+          <a href="/dashboard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all">
+            <i class="fas fa-user-shield text-xs"></i>
             <span id="nav-user-name">User</span>
           </a>
-          <button onclick="handleLogout()" title="Sign Out" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 text-xs transition-colors">
-            <i class="fas fa-sign-out-alt"></i>
+          <button onclick="handleLogout()" title="Sign Out Session" class="p-1.5 rounded-md bg-gray-800 hover:bg-red-600/20 border border-gray-700 text-gray-400 hover:text-red-400 text-xs transition-all">
+            <i class="fas fa-right-from-bracket"></i>
           </button>
         </div>
       </div>
@@ -55,27 +91,107 @@
     </div>
   </header>
 
-  <!-- Main Content Container -->
-  <main class="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-8">
+  <!-- Main View Container -->
+  <main class="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-10 relative z-10">
     {% block content %}{% endblock %}
   </main>
 
   <!-- Footer -->
-  <footer class="border-t border-white/10 bg-slate-950/40 py-6 text-center text-xs text-gray-500">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <p>&copy; 2026 SecureBank Demo. Zero Passwords. Pure Cryptographic Auth.</p>
-      <div class="flex items-center gap-4 text-gray-400">
-        <span class="flex items-center gap-1.5"><i class="fas fa-fingerprint text-indigo-400"></i> WebAuthn / FIDO2</span>
-        <span class="flex items-center gap-1.5"><i class="fas fa-envelope-open-text text-emerald-400"></i> Hashed OTP</span>
-        <span class="flex items-center gap-1.5"><i class="fas fa-shield-virus text-cyan-400"></i> Device Trust</span>
+  <footer class="border-t border-gray-800 bg-gray-900/90 py-5 text-center text-xs text-gray-400 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+        <p>&copy; 2026 Dorito Vault. Bootstrap Natural Passwordless Security.</p>
+      </div>
+      <div class="flex items-center gap-4 text-gray-400 font-mono-code text-[11px]">
+        <span class="text-blue-400"><i class="fas fa-shield-cat"></i> WebAuthn</span>
+        <span class="text-emerald-400"><i class="fas fa-key"></i> Hashed OTP</span>
+        <span class="text-gray-300"><i class="fas fa-qrcode"></i> Mobile Sync</span>
       </div>
     </div>
   </footer>
 
-  <!-- Toast Notification Container -->
+  <!-- Toast Container -->
   <div id="toast-container"></div>
 
-  <!-- App Client Scripts -->
+  <!-- MODAL 1: STEP-UP AUTHENTICATION -->
+  <div id="step-up-modal" class="modal-overlay">
+    <div class="bs-card p-6 rounded-xl max-w-md w-full modal-card border-gray-700">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+            <i class="fas fa-user-lock"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Step-Up Verification</h3>
+            <p class="text-xs text-gray-400">Additional factor required for wire transfer.</p>
+          </div>
+        </div>
+        <button onclick="closeStepUpModal()" class="text-gray-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <p id="step-up-description" class="text-xs text-gray-300 mb-4 bg-gray-800/60 p-3 rounded border border-gray-700">
+        To complete this wire transfer, please verify the 6-digit OTP code sent to your email address.
+      </p>
+
+      <form onsubmit="handleExecuteStepUp(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Email Address</label>
+          <input type="email" id="step-up-email" readonly class="w-full bs-input text-xs font-mono-code text-gray-300 bg-gray-800 cursor-not-allowed" />
+        </div>
+        
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-emerald-400">Enter Step-Up OTP</label>
+            <button type="button" onclick="handleSendStepUpOtp()" class="text-[11px] text-blue-400 hover:underline font-semibold">Send Code</button>
+          </div>
+          <input type="text" id="step-up-code" maxlength="6" placeholder="123456" class="w-full bs-input text-center tracking-widest font-mono-code text-base text-emerald-300 focus:outline-none" required />
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeStepUpModal()" class="flex-1 py-2 rounded bg-gray-700 hover:bg-gray-600 text-xs font-semibold text-gray-200">Cancel</button>
+          <button type="submit" id="btn-step-up-verify" class="flex-1 py-2 rounded btn-bs-success text-xs font-bold">Authorize Action</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: MOBILE QR APPROVAL SIMULATOR -->
+  <div id="qr-approve-modal" class="modal-overlay">
+    <div class="bs-card p-6 rounded-xl max-w-md w-full modal-card border-gray-700">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+            <i class="fas fa-mobile-screen-button"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Mobile Phone QR Simulator</h3>
+            <p class="text-xs text-gray-400">Simulate scanning a QR code from a logged-in phone.</p>
+          </div>
+        </div>
+        <button onclick="closeQrApprovalModal()" class="text-gray-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <form onsubmit="handleApproveQrToken(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Authenticated Account Email</label>
+          <input type="email" id="qr-approve-email" placeholder="customer@securebank.com" class="w-full bs-input text-xs font-mono-code text-white" required />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-blue-400 mb-1">Scanned QR Token</label>
+          <input type="text" id="qr-approve-token" placeholder="Paste token from untrusted device screen" class="w-full bs-input text-xs font-mono-code text-blue-300" required />
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeQrApprovalModal()" class="flex-1 py-2 rounded bg-gray-700 hover:bg-gray-600 text-xs font-semibold text-gray-200">Cancel</button>
+          <button type="submit" class="flex-1 py-2 rounded btn-bs-primary text-xs font-bold">Approve Login</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Client Application Script -->
   <script src="/static/js/app.js"></script>
 </body>
 </html>

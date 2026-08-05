@@ -6,6 +6,8 @@ __pycache__/
 *.pyc
 *.pyo
 devices/
+sql_app.db
+*.db
 # IDE
 .vscode/
 .idea/

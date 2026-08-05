@@ -31,17 +31,12 @@ elif DATABASE_URL.startswith("postgres://"):
 # by default. This is handled below via prepare_threshold=None — no special
 # query parameter needed on the URL itself.
 connect_args = {}
-if "sslmode" not in DATABASE_URL:
-    connect_args["sslmode"] = "require"
-
-# Disable psycopg3's automatic server-side prepared statements. When connecting
-# through Supabase's transaction-mode pooler (pgbouncer), each query can land on
-# a different underlying Postgres connection, so a prepared statement created on
-# one physical connection may not exist on the next — causing errors like the
-# introspection queries SQLAlchemy runs on startup to fail. Setting
-# prepare_threshold=None turns prepared statements off entirely, which is safe
-# for both pooled and direct connections.
-connect_args["prepare_threshold"] = None
+if DATABASE_URL.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+elif DATABASE_URL.startswith("postgresql"):
+    if "sslmode" not in DATABASE_URL:
+        connect_args["sslmode"] = "require"
+    connect_args["prepare_threshold"] = None
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

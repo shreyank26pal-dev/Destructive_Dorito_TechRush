@@ -1,87 +1,110 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard — SecureBank{% endblock %}
+{% block title %}Dashboard — Dorito Vault Executive Banking{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-6xl space-y-6">
+<div class="w-full max-w-6xl space-y-5">
 
   <!-- Top Dashboard Banner -->
-  <div class="glass-panel p-6 sm:p-8 rounded-3xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-    <div class="flex items-center gap-5">
-      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-emerald-400 p-0.5 shadow-xl shadow-indigo-500/20 flex-shrink-0">
-        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-          <i class="fas fa-user-shield text-indigo-400 text-2xl"></i>
-        </div>
+  <div class="bs-card p-5 sm:p-6 rounded-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-gray-800">
+    
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 flex items-center justify-center font-bold text-xl flex-shrink-0">
+        <i class="fas fa-user-shield text-blue-400"></i>
       </div>
       <div>
-        <div class="flex items-center gap-3">
-          <h1 id="dash-user-name" class="text-2xl font-bold text-white font-heading">Bank Customer</h1>
-          <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold">Active Session</span>
+        <div class="flex items-center gap-2">
+          <h1 id="dash-user-name" class="text-xl font-bold text-white">Vault Member</h1>
+          <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[11px] font-bold font-mono-code flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Active Session
+          </span>
         </div>
-        <p id="dash-user-email" class="text-sm text-gray-400 mt-1">loading...</p>
+        <p id="dash-user-email" class="text-xs font-mono-code text-gray-400 mt-0.5">loading...</p>
       </div>
     </div>
 
-    <div class="flex items-center gap-3 w-full md:w-auto">
-      <button onclick="handleLogout()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 flex items-center gap-2 transition-colors">
-        <i class="fas fa-sign-out-alt"></i> Sign Out
+    <div class="flex items-center gap-2 w-full md:w-auto">
+      <button onclick="handleLogout()" class="px-3.5 py-2 rounded bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs font-semibold text-gray-300 flex items-center gap-1.5 transition-all">
+        <i class="fas fa-right-from-bracket"></i> Sign Out
       </button>
-      <button onclick="handleLogoutAll()" class="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-semibold text-rose-300 flex items-center gap-2 transition-colors">
+      <button onclick="handleLogoutAll()" class="px-3.5 py-2 rounded bg-red-900/30 hover:bg-red-900/50 border border-red-700/50 text-xs font-semibold text-red-300 flex items-center gap-1.5 transition-all">
         <i class="fas fa-ban"></i> Revoke All Sessions
       </button>
     </div>
   </div>
 
-  <!-- Middle Grid: Security Alerts & Passkeys / Profile -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Bank Account Executive Card -->
+  <div class="bank-card-bs p-6 sm:p-7">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400 font-mono-code mb-1">
+          <i class="fas fa-vault"></i> Dorito Vault Reserves & Savings
+        </div>
+        <div class="flex items-baseline gap-3">
+          <span class="text-3xl font-bold text-white">$248,590.00</span>
+          <span class="text-xs text-emerald-400 font-semibold font-mono-code"><i class="fas fa-arrow-trend-up"></i> +2.4% APY</span>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Account No: <span class="font-mono-code text-gray-300">•••• •••• 8842</span></p>
+      </div>
+
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <button onclick="triggerWireTransferStepUp()" class="w-full sm:w-auto px-4 py-2.5 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2 shadow">
+          <i class="fas fa-paper-plane"></i> Wire Transfer ($10,000)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Middle Grid: Security Alerts & Passkey / Profile Management -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
     
-    <!-- Security Alerts Panel (2 Cols) -->
-    <div class="lg:col-span-2 glass-panel p-6 rounded-3xl space-y-4">
+    <!-- Security & Device Risk Center (2 Cols) -->
+    <div class="lg:col-span-2 bs-card p-5 sm:p-6 rounded-xl space-y-4 border-gray-800">
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold text-white font-heading flex items-center gap-2">
-          <i class="fas fa-shield-virus text-indigo-400"></i> Security & Device Risk Center
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fas fa-shield-virus text-blue-400"></i> Security Risk & Hardware Trust Center
         </h2>
-        <button onclick="initDashboard()" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-          <i class="fas fa-sync-alt"></i> Refresh
+        <button onclick="initDashboard()" class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold">
+          <i class="fas fa-rotate"></i> Refresh
         </button>
       </div>
 
-      <div id="alerts-container" class="space-y-3">
-        <div class="p-4 rounded-xl bg-white/5 animate-pulse text-xs text-gray-400">Checking device trust and risk history...</div>
+      <div id="alerts-container" class="space-y-2.5">
+        <div class="p-3.5 rounded bg-gray-800/60 animate-pulse text-xs text-gray-400">Evaluating hardware fingerprint trust and risk history...</div>
       </div>
     </div>
 
-    <!-- Passkey & Profile Settings Card (1 Col) -->
-    <div class="glass-panel p-6 rounded-3xl space-y-6">
+    <!-- Passkeys & Profile Settings (1 Col) -->
+    <div class="bs-card p-5 sm:p-6 rounded-xl space-y-5 border-gray-800">
       
-      <!-- Passkey Registration Section -->
+      <!-- Biometric Passkey Registration Section -->
       <div>
-        <h3 class="text-sm font-bold text-white font-heading mb-2 flex items-center gap-2">
-          <i class="fas fa-fingerprint text-emerald-400"></i> Biometrics & Passkeys
+        <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-1 flex items-center gap-1.5">
+          <i class="fas fa-fingerprint text-emerald-400"></i> Passkeys & Biometrics
         </h3>
-        <p class="text-xs text-gray-400 mb-3">Add Windows Hello, TouchID, or security key for instant logins.</p>
-        <button onclick="handleDashboardRegisterPasskey()" class="w-full py-2.5 px-4 rounded-xl btn-emerald text-xs font-semibold flex items-center justify-center gap-2">
-          <i class="fas fa-plus-circle"></i> Register New Passkey
+        <p class="text-xs text-gray-400 mb-3">Register TouchID, Windows Hello, or YubiKey credentials.</p>
+        <button onclick="handleDashboardRegisterPasskey()" class="w-full py-2.5 px-3 rounded btn-bs-success text-xs font-bold flex items-center justify-center gap-2">
+          <i class="fas fa-plus-circle"></i> Add Hardware Passkey
         </button>
       </div>
 
-      <hr class="border-white/10" />
+      <hr class="border-gray-800" />
 
       <!-- Profile Update Section -->
       <div>
-        <h3 class="text-sm font-bold text-white font-heading mb-3 flex items-center gap-2">
-          <i class="fas fa-user-edit text-indigo-400"></i> Edit Profile
+        <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <i class="fas fa-user-pen text-blue-400"></i> Update Account Profile
         </h3>
-        <form onsubmit="handleUpdateProfile(event)" class="space-y-3">
+        <form onsubmit="handleUpdateProfile(event)" class="space-y-2.5">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Full Name</label>
-            <input type="text" id="profile-name-input" class="w-full px-3.5 py-2 rounded-xl glass-input text-xs focus:outline-none" />
+            <label class="block text-xs font-semibold text-gray-300 mb-1">Full Name</label>
+            <input type="text" id="profile-name-input" class="w-full px-3 py-2 bs-input text-xs font-mono-code focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Email (Read Only)</label>
-            <input type="email" id="profile-email-input" disabled class="w-full px-3.5 py-2 rounded-xl glass-input text-xs text-gray-500 bg-white/5 cursor-not-allowed" />
+            <label class="block text-xs font-semibold text-gray-400 mb-1">Email (Immutable)</label>
+            <input type="email" id="profile-email-input" disabled class="w-full px-3 py-2 bs-input text-xs font-mono-code text-gray-500 bg-gray-800/60 cursor-not-allowed" />
           </div>
-          <button type="submit" class="w-full py-2 px-4 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition-colors">
+          <button type="submit" class="w-full py-2 px-3 rounded bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-300 text-xs font-bold transition-all">
             Save Profile Changes
           </button>
         </form>
@@ -90,34 +113,34 @@
     </div>
   </div>
 
-  <!-- Bottom: Security Audit Log (Login History) -->
-  <div class="glass-panel p-6 rounded-3xl space-y-4">
-    <div class="flex items-center justify-between">
+  <!-- Bottom: Authentication Audit Log Table -->
+  <div class="bs-card p-5 sm:p-6 rounded-xl space-y-4 border-gray-800">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
       <div>
-        <h2 class="text-lg font-bold text-white font-heading flex items-center gap-2">
-          <i class="fas fa-history text-cyan-400"></i> Authentication Audit Log
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fas fa-history text-blue-400"></i> Cryptographic Audit Trail
         </h2>
-        <p class="text-xs text-gray-400 mt-0.5">Chronological record of recent login attempts across all devices.</p>
+        <p class="text-xs text-gray-400 mt-0.5">Immutable record of WebAuthn, OTP, and QR login events.</p>
       </div>
-      <span class="text-xs text-gray-500">Last 25 Events</span>
+      <span class="text-xs font-mono-code text-gray-400 bg-gray-800 px-2.5 py-1 rounded border border-gray-700 w-fit">Last 50 Events</span>
     </div>
 
     <!-- Audit Log Table -->
     <div class="overflow-x-auto">
       <table class="w-full text-left border-collapse">
         <thead>
-          <tr class="border-b border-white/10 text-xs text-gray-400 font-semibold uppercase tracking-wider">
-            <th class="py-3 px-4">Method</th>
-            <th class="py-3 px-4">Status</th>
-            <th class="py-3 px-4">IP Address</th>
-            <th class="py-3 px-4">Device Fingerprint</th>
-            <th class="py-3 px-4">Timestamp (UTC)</th>
+          <tr class="border-b border-gray-800 text-xs text-gray-400 font-semibold uppercase tracking-wider font-mono-code">
+            <th class="py-3 px-3">Method</th>
+            <th class="py-3 px-3">Status</th>
+            <th class="py-3 px-3">IP Address</th>
+            <th class="py-3 px-3">Hardware Fingerprint</th>
+            <th class="py-3 px-3">Timestamp (UTC)</th>
           </tr>
         </thead>
         <tbody id="history-tbody">
           <tr>
-            <td colspan="5" class="py-6 text-center text-gray-500 text-sm">
-              <i class="fas fa-spinner fa-spin mr-2"></i> Loading audit history...
+            <td colspan="5" class="py-6 text-center text-gray-500 text-xs font-mono-code">
+              <i class="fas fa-circle-notch fa-spin text-blue-400 mr-2"></i> Fetching audit records...
             </td>
           </tr>
         </tbody>
