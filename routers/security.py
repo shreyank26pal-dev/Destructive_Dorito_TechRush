@@ -71,12 +71,36 @@ def _get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _get_rp_id_and_origin(request: Request) -> tuple[str, str]:
+    """
+    Dynamically resolve RP_ID and ORIGIN based on the current HTTP request header,
+    with fallback to environment variables. This guarantees WebAuthn works whether
+    accessed via localhost, 127.0.0.1, ngrok tunnel, or custom domain name.
+    """
+    host = request.headers.get("host", "").split(":")[0]
+    origin = request.headers.get("origin")
+    
+    # 1. Compute RP_ID
+    if host and host not in ["127.0.0.1", "::1"]:
+        rp_id = host
+    else:
+        rp_id = RP_ID
+        
+    # 2. Compute ORIGIN
+    if not origin:
+        scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+        raw_host = request.headers.get("host", "localhost:8000")
+        origin = f"{scheme}://{raw_host}"
+        
+    return rp_id, origin
+
+
 # ===========================================================================
 # WEBAUTHN — BIOMETRIC REGISTRATION
 # ===========================================================================
 
 @router.post("/webauthn/register-options")
-def webauthn_register_options(payload: WebAuthnLoginOptionsRequest, db: DBSession = Depends(get_db)):
+def webauthn_register_options(payload: WebAuthnLoginOptionsRequest, request: Request, db: DBSession = Depends(get_db)):
     """
     Step 1 of registration: generate a challenge for the browser to sign
     with the platform authenticator (fingerprint/Face ID/Windows Hello).
@@ -85,8 +109,10 @@ def webauthn_register_options(payload: WebAuthnLoginOptionsRequest, db: DBSessio
     if not user:
         return error_response("No account found for this email. Register first.")
 
+    rp_id, _ = _get_rp_id_and_origin(request)
+
     options = generate_registration_options(
-        rp_id=RP_ID,
+        rp_id=rp_id,
         rp_name=RP_NAME,
         user_id=user.id.encode("utf-8"),
         user_name=user.email,
@@ -105,7 +131,7 @@ def webauthn_register_options(payload: WebAuthnLoginOptionsRequest, db: DBSessio
 
 
 @router.post("/webauthn/register-verify")
-def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest, db: DBSession = Depends(get_db)):
+def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest, request: Request, db: DBSession = Depends(get_db)):
     """
     Step 2 of registration: verify the signed credential the browser sends back,
     then store the public key. We never store any raw biometric data — only
@@ -119,13 +145,15 @@ def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest, db: DBSessi
     if not expected_challenge:
         return error_response("No pending registration challenge. Start again.")
 
+    rp_id, origin = _get_rp_id_and_origin(request)
+
     try:
         credential = parse_registration_credential_json(json.dumps(payload.credential))
         verification = verify_registration_response(
             credential=credential,
             expected_challenge=expected_challenge,
-            expected_rp_id=RP_ID,
-            expected_origin=ORIGIN,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
         )
     except Exception as e:
         return error_response(f"Registration verification failed: {str(e)}")
@@ -149,7 +177,7 @@ def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest, db: DBSessi
 # ===========================================================================
 
 @router.post("/webauthn/login-options")
-def webauthn_login_options(payload: WebAuthnLoginOptionsRequest, db: DBSession = Depends(get_db)):
+def webauthn_login_options(payload: WebAuthnLoginOptionsRequest, request: Request, db: DBSession = Depends(get_db)):
     """Step 1 of login: generate a challenge, tell the browser which credentials are allowed."""
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not user.credentials:
@@ -160,8 +188,10 @@ def webauthn_login_options(payload: WebAuthnLoginOptionsRequest, db: DBSession =
         for cred in user.credentials
     ]
 
+    rp_id, _ = _get_rp_id_and_origin(request)
+
     options = generate_authentication_options(
-        rp_id=RP_ID,
+        rp_id=rp_id,
         allow_credentials=allow_credentials,
         user_verification=UserVerificationRequirement.PREFERRED,
     )
@@ -189,6 +219,8 @@ def webauthn_login_verify(payload: WebAuthnLoginVerifyRequest, response: Respons
         log_login_attempt(user.id, "webauthn", False, ip, payload.device_fingerprint)
         return error_response("No pending login challenge. Start again.")
 
+    rp_id, origin = _get_rp_id_and_origin(request)
+
     try:
         credential = parse_authentication_credential_json(json.dumps(payload.credential))
         cred_id_hex = credential.raw_id.hex()
@@ -203,8 +235,8 @@ def webauthn_login_verify(payload: WebAuthnLoginVerifyRequest, response: Respons
         verification = verify_authentication_response(
             credential=credential,
             expected_challenge=expected_challenge,
-            expected_rp_id=RP_ID,
-            expected_origin=ORIGIN,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
             credential_public_key=stored_cred.public_key,
             credential_current_sign_count=stored_cred.counter,
         )
