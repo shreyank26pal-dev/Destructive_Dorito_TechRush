@@ -2,38 +2,24 @@
 Section A — /api/entry/... only (CONTRACT.md section 7).
 Owns the `users` table (shared, created here) and `devices` table (writes only
 from here — Section B/C may read but never insert/update device rows).
-
-These endpoints run BEFORE a session exists (registration, first-touch device
-check), so unlike routers/sessions.py they do not call get_current_user(request).
-user_id is taken from the request body / path instead — a known, discussed
-tradeoff (see chat), not an oversight.
-
-INTEGRATION NOTE (from Section B's INTEGRATION_NOTES_SECTION_B.md):
-- check-device now returns `trusted` alongside `known_device`, so B's frontend
-  can decide when to prompt for step-up OTP after a biometric login.
-- alerts now also flags accounts with repeated recent login failures, read from
-  login_history (populated by Section B's webauthn/otp/qr endpoints via
-  log_login_attempt). This was always part of the original pt-9 spec
-  ("new device, repeated failures") — it was deferred earlier only because
-  login_history had no real writers yet. It does now.
 """
 
+import hashlib
+import json
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session as DBSession
 
 import models
 from database import get_db
-from schemas import APIResponse, RegisterRequest, CheckDeviceRequest
+from schemas import APIResponse, RegisterRequest, CheckDeviceRequest, StepUpChallengeRequest
+from lib.lockout_utils import FAILED_LOGIN_WINDOW_MINUTES, FAILED_LOGIN_THRESHOLD
+from lib.rate_limit import limiter
 
 router = APIRouter(prefix="/api/entry", tags=["entry"])
 
-# How far back to look, and how many failures count as "repeated", for the
-# failed-login alert rule. Simple fixed thresholds — no ML needed per the
-# original plan.
-FAILED_LOGIN_WINDOW_MINUTES = 30
-FAILED_LOGIN_THRESHOLD = 3
+STEP_UP_CHALLENGE_EXPIRE_MINUTES = 5
 
 
 def _error(response: Response, status_code: int, message: str) -> APIResponse:
@@ -42,7 +28,9 @@ def _error(response: Response, status_code: int, message: str) -> APIResponse:
 
 
 @router.post("/register", response_model=APIResponse)
+@limiter.limit("5/minute")
 def register(
+    request: Request,
     payload: RegisterRequest,
     response: Response,
     db: DBSession = Depends(get_db),
@@ -51,7 +39,7 @@ def register(
     if existing:
         return _error(response, 409, "An account with this email already exists")
 
-    user = models.User(email=payload.email, name=payload.name)
+    user = models.User(email=payload.email, name=payload.name, is_verified=False)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -59,7 +47,7 @@ def register(
     response.status_code = 201
     return APIResponse(
         status="success",
-        data={"id": user.id, "email": user.email, "name": user.name},
+        data={"id": user.id, "email": user.email, "name": user.name, "is_verified": user.is_verified},
         message="User registered",
     )
 
@@ -130,8 +118,6 @@ def alerts(
             "last_seen_at": d.last_seen_at.isoformat(),
         })
 
-    # Repeated-failure rule — reads Section C's login_history table (read-only;
-    # Section A never writes to it, per CONTRACT.md ownership rules).
     since = datetime.utcnow() - timedelta(minutes=FAILED_LOGIN_WINDOW_MINUTES)
     recent_failures = (
         db.query(models.LoginHistory)
@@ -150,3 +136,40 @@ def alerts(
         })
 
     return APIResponse(status="success", data=alert_list)
+
+
+@router.post("/step-up/challenge", response_model=APIResponse)
+def create_step_up_challenge(
+    payload: StepUpChallengeRequest,
+    response: Response,
+    db: DBSession = Depends(get_db),
+):
+    """
+    Section A, Day 3. Call this before a sensitive action (e.g. a transfer)
+    to get a challenge_id bound to a hash of that specific transaction's details.
+    """
+    user = db.query(models.User).filter(models.User.id == payload.user_id).first()
+    if not user:
+        return _error(response, 404, "User not found")
+
+    canonical = json.dumps(payload.transaction, sort_keys=True, separators=(",", ":"))
+    transaction_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    challenge = models.StepUpChallenge(
+        user_id=user.id,
+        transaction_hash=transaction_hash,
+        expires_at=datetime.utcnow() + timedelta(minutes=STEP_UP_CHALLENGE_EXPIRE_MINUTES),
+    )
+    db.add(challenge)
+    db.commit()
+    db.refresh(challenge)
+
+    return APIResponse(
+        status="success",
+        data={
+            "challenge_id": challenge.id,
+            "transaction_hash": transaction_hash,
+            "expires_at": challenge.expires_at.isoformat(),
+        },
+        message="Present this challenge_id with the step-up OTP to authorize this specific transaction.",
+    )

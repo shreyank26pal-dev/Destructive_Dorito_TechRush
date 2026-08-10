@@ -1,11 +1,6 @@
 """
-SECTION B — Actual Security Measures (pts 2, 3, 4)
-Owns: WebAuthn (biometric) registration/login, OTP send/verify.
-
-All routes live under /api/security/... per CONTRACT.md.
-All responses use the shared APIResponse shape via success_response()/error_response().
-Every login attempt (success or fail) is logged via lib/session_utils.log_login_attempt().
-OTP codes are always hashed before storage — never stored in plaintext.
+SECTION B — Actual Security Measures (pts 2, 3, 4) + SECTION A Lockout & Step-Up integration.
+Owns: WebAuthn registration/login, OTP send/verify, QR sync, Email verification, Recovery codes.
 """
 import os
 import json
@@ -34,7 +29,15 @@ from webauthn.helpers.structs import (
 )
 
 from database import get_db
-from models import User, Credential, OTPCode, LoginToken
+from models import (
+    User,
+    Credential,
+    OTPCode,
+    LoginToken,
+    EmailVerificationCode,
+    RecoveryCode,
+    StepUpChallenge,
+)
 from schemas import (
     success_response,
     error_response,
@@ -46,8 +49,14 @@ from schemas import (
     QrGenerateRequest,
     QrApproveRequest,
     StepUpVerifyRequest,
+    EmailVerificationSendRequest,
+    EmailVerificationVerifyRequest,
+    RecoveryCodeGenerateRequest,
+    RecoveryCodeVerifyRequest,
 )
 from lib.session_utils import create_session, log_login_attempt, get_current_user
+from lib.email_utils import send_email
+from lib.lockout_utils import is_locked, check_and_lock_if_needed, clear_lock
 
 router = APIRouter()
 
@@ -58,12 +67,6 @@ RP_NAME = os.getenv("WEBAUTHN_RP_NAME", "SecureBank Demo")
 ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "http://localhost:8000")
 OTP_EXPIRE_MINUTES = int(os.getenv("OTP_EXPIRE_MINUTES", "5"))
 
-# ---------------------------------------------------------------------------
-# In-memory challenge store for the WebAuthn ceremony.
-# NOTE: this is fine for a single-process hackathon demo. If you deploy with
-# multiple workers/instances, move this to the DB or Redis instead — a
-# challenge generated on one worker won't be visible to another.
-# ---------------------------------------------------------------------------
 _pending_challenges: dict[str, bytes] = {}
 
 
@@ -80,13 +83,11 @@ def _get_rp_id_and_origin(request: Request) -> tuple[str, str]:
     host = request.headers.get("host", "").split(":")[0]
     origin = request.headers.get("origin")
     
-    # 1. Compute RP_ID
     if host and host not in ["127.0.0.1", "::1"]:
         rp_id = host
     else:
         rp_id = RP_ID
         
-    # 2. Compute ORIGIN
     if not origin:
         scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
         raw_host = request.headers.get("host", "localhost:8000")
@@ -101,10 +102,6 @@ def _get_rp_id_and_origin(request: Request) -> tuple[str, str]:
 
 @router.post("/webauthn/register-options")
 def webauthn_register_options(payload: WebAuthnLoginOptionsRequest, request: Request, db: DBSession = Depends(get_db)):
-    """
-    Step 1 of registration: generate a challenge for the browser to sign
-    with the platform authenticator (fingerprint/Face ID/Windows Hello).
-    """
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
         return error_response("No account found for this email. Register first.")
@@ -123,20 +120,11 @@ def webauthn_register_options(payload: WebAuthnLoginOptionsRequest, request: Req
     )
 
     _pending_challenges[user.email] = options.challenge
-
-    # options_to_json() returns a JSON STRING, not a dict — must parse it back
-    # into an object, or the frontend's options.challenge access fails with
-    # "Cannot read properties of undefined".
     return success_response(data=json.loads(options_to_json(options)))
 
 
 @router.post("/webauthn/register-verify")
 def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest, request: Request, db: DBSession = Depends(get_db)):
-    """
-    Step 2 of registration: verify the signed credential the browser sends back,
-    then store the public key. We never store any raw biometric data — only
-    the public key, which is useless to an attacker without the device.
-    """
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
         return error_response("No account found for this email.")
@@ -168,7 +156,6 @@ def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest, request: Re
     db.commit()
 
     _pending_challenges.pop(user.email, None)
-
     return success_response(message="Biometric credential registered successfully.")
 
 
@@ -178,7 +165,6 @@ def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest, request: Re
 
 @router.post("/webauthn/login-options")
 def webauthn_login_options(payload: WebAuthnLoginOptionsRequest, request: Request, db: DBSession = Depends(get_db)):
-    """Step 1 of login: generate a challenge, tell the browser which credentials are allowed."""
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not user.credentials:
         return error_response("No biometric credential registered for this account.")
@@ -197,16 +183,11 @@ def webauthn_login_options(payload: WebAuthnLoginOptionsRequest, request: Reques
     )
 
     _pending_challenges[user.email] = options.challenge
-
-    # options_to_json() returns a JSON STRING, not a dict — must parse it back
-    # into an object, or the frontend's options.challenge access fails with
-    # "Cannot read properties of undefined".
     return success_response(data=json.loads(options_to_json(options)))
 
 
 @router.post("/webauthn/login-verify")
 def webauthn_login_verify(payload: WebAuthnLoginVerifyRequest, response: Response, request: Request, db: DBSession = Depends(get_db)):
-    """Step 2 of login: verify the signed assertion, create a session if valid."""
     user = db.query(User).filter(User.email == payload.email).first()
     ip = _get_client_ip(request)
 
@@ -214,9 +195,13 @@ def webauthn_login_verify(payload: WebAuthnLoginVerifyRequest, response: Respons
         log_login_attempt(None, "webauthn", False, ip, payload.device_fingerprint)
         return error_response("No account found for this email.")
 
+    if is_locked(user):
+        return error_response("Account temporarily locked due to repeated failed attempts. Try again later.")
+
     expected_challenge = _pending_challenges.get(user.email)
     if not expected_challenge:
         log_login_attempt(user.id, "webauthn", False, ip, payload.device_fingerprint)
+        check_and_lock_if_needed(db, user, ip)
         return error_response("No pending login challenge. Start again.")
 
     rp_id, origin = _get_rp_id_and_origin(request)
@@ -242,6 +227,7 @@ def webauthn_login_verify(payload: WebAuthnLoginVerifyRequest, response: Respons
         )
     except Exception as e:
         log_login_attempt(user.id, "webauthn", False, ip, payload.device_fingerprint)
+        check_and_lock_if_needed(db, user, ip)
         return error_response(f"Login verification failed: {str(e)}")
 
     stored_cred.counter = verification.new_sign_count
@@ -252,6 +238,7 @@ def webauthn_login_verify(payload: WebAuthnLoginVerifyRequest, response: Respons
 
     create_session(user_id=user.id, device_id=None, response=response)
     log_login_attempt(user.id, "webauthn", True, ip, payload.device_fingerprint)
+    clear_lock(db, user)
 
     return success_response(
         data={"id": user.id, "email": user.email, "name": user.name},
@@ -260,38 +247,43 @@ def webauthn_login_verify(payload: WebAuthnLoginVerifyRequest, response: Respons
 
 
 # ===========================================================================
-# OTP — EMAIL VERIFICATION
+# OTP — EMAIL VERIFICATION / LOGIN
 # ===========================================================================
 
 @router.post("/otp/send")
 def send_otp(payload: OtpSendRequest, db: DBSession = Depends(get_db)):
-    """Generates a 6-digit code, stores its HASH (never plaintext), emails it out."""
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
         return error_response("No account found for this email.")
 
-    code = f"{secrets.randbelow(1000000):06d}"
-    code_hash = pwd_context.hash(code)
+    raw_code = f"{secrets.randbelow(900000) + 100000:06d}"
+    code_hash = pwd_context.hash(raw_code)
     expires_at = datetime.utcnow() + timedelta(minutes=OTP_EXPIRE_MINUTES)
 
-    otp_row = OTPCode(user_id=user.id, code_hash=code_hash, expires_at=expires_at, used=False)
+    otp_row = OTPCode(user_id=user.id, code_hash=code_hash, expires_at=expires_at)
     db.add(otp_row)
     db.commit()
 
-    _send_otp_email(user.email, code)
+    send_email(
+        to=user.email,
+        subject="Your SecureBank login code",
+        html=f"<p>Your one-time login code is <strong>{raw_code}</strong>. It expires in {OTP_EXPIRE_MINUTES} minutes.</p>"
+    )
 
-    return success_response(message=f"OTP sent to {user.email}. Expires in {OTP_EXPIRE_MINUTES} minutes.")
+    return success_response(message=f"Login code sent to {user.email}.")
 
 
 @router.post("/otp/verify")
 def verify_otp(payload: OtpVerifyRequest, response: Response, request: Request, db: DBSession = Depends(get_db)):
-    """Verifies the code against the stored hash, enforces expiry + single-use."""
     user = db.query(User).filter(User.email == payload.email).first()
     ip = _get_client_ip(request)
 
     if not user:
         log_login_attempt(None, "otp", False, ip, payload.device_fingerprint)
         return error_response("No account found for this email.")
+
+    if is_locked(user):
+        return error_response("Account temporarily locked due to repeated failed attempts. Try again later.")
 
     otp_row = (
         db.query(OTPCode)
@@ -300,16 +292,14 @@ def verify_otp(payload: OtpVerifyRequest, response: Response, request: Request, 
         .first()
     )
 
-    if not otp_row:
+    if not otp_row or otp_row.expires_at < datetime.utcnow():
         log_login_attempt(user.id, "otp", False, ip, payload.device_fingerprint)
-        return error_response("No active OTP found. Request a new one.")
-
-    if otp_row.expires_at < datetime.utcnow():
-        log_login_attempt(user.id, "otp", False, ip, payload.device_fingerprint)
-        return error_response("OTP has expired. Request a new one.")
+        check_and_lock_if_needed(db, user, ip)
+        return error_response("No active OTP found, or it has expired. Request a new one.")
 
     if not pwd_context.verify(payload.code, otp_row.code_hash):
         log_login_attempt(user.id, "otp", False, ip, payload.device_fingerprint)
+        check_and_lock_if_needed(db, user, ip)
         return error_response("Incorrect OTP.")
 
     otp_row.used = True
@@ -317,147 +307,89 @@ def verify_otp(payload: OtpVerifyRequest, response: Response, request: Request, 
 
     create_session(user_id=user.id, device_id=None, response=response)
     log_login_attempt(user.id, "otp", True, ip, payload.device_fingerprint)
+    clear_lock(db, user)
 
     return success_response(
         data={"id": user.id, "email": user.email, "name": user.name},
-        message="OTP verified. Logged in.",
+        message="OTP verification successful.",
     )
 
 
 # ===========================================================================
-# QR CROSS-DEVICE LOGIN (pt 4 — alternative to biometric, for untrusted devices)
-#
-# Flow:
-#   1. Untrusted device (e.g. laptop with no passkey set up) calls /qr/generate
-#      and renders the returned token as a QR code on screen.
-#   2. User scans it with their phone, which is already logged in there.
-#      The phone calls /qr/approve with its own session + the scanned token.
-#   3. Untrusted device polls /qr/status/{token} every ~2s. Once approved,
-#      it receives a session cookie exactly like any other login method.
-#
-# No credentials are ever typed on the untrusted device — the phone vouches
-# for it instead. This is the "answer for new/untrusted device logins"
-# discussed with the team, not a replacement for biometric on trusted devices.
+# QR CROSS-DEVICE SYNC
 # ===========================================================================
-
-QR_TOKEN_EXPIRE_MINUTES = 5
-
 
 @router.post("/qr/generate")
 def qr_generate(payload: QrGenerateRequest, db: DBSession = Depends(get_db)):
-    """Called by the UNTRUSTED device. Returns a token to render as a QR code."""
-    token_value = secrets.token_urlsafe(24)
-    expires_at = datetime.utcnow() + timedelta(minutes=QR_TOKEN_EXPIRE_MINUTES)
-
-    token_row = LoginToken(token=token_value, status="pending", expires_at=expires_at)
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(minutes=5)
+    token_row = LoginToken(token=token, status="pending", expires_at=expires_at)
     db.add(token_row)
     db.commit()
 
     return success_response(
-        data={"token": token_value, "expires_in_seconds": QR_TOKEN_EXPIRE_MINUTES * 60},
-        message="Show this token as a QR code. Scan it with an already-logged-in device.",
+        data={"token": token, "expires_at": expires_at.isoformat()},
+        message="QR token generated.",
     )
 
 
 @router.get("/qr/status/{token}")
-def qr_status(token: str, response: Response, request: Request, db: DBSession = Depends(get_db)):
-    """
-    Polled by the UNTRUSTED device (every ~2s) to check if the phone has approved yet.
-    Once approved, this is where the actual session gets created for the untrusted device.
-    """
+def qr_status(token: str, db: DBSession = Depends(get_db)):
     token_row = db.query(LoginToken).filter(LoginToken.token == token).first()
-    ip = _get_client_ip(request)
-
     if not token_row:
-        return error_response("Invalid or unknown token.")
+        return error_response("Invalid token.")
 
     if token_row.expires_at < datetime.utcnow() and token_row.status == "pending":
         token_row.status = "expired"
         db.commit()
 
-    if token_row.status == "pending":
-        return success_response(data={"status": "pending"})
-
-    if token_row.status == "denied":
-        return success_response(data={"status": "denied"})
-
-    if token_row.status == "expired":
-        return success_response(data={"status": "expired"})
-
-    if token_row.status == "approved":
+    data = {"status": token_row.status}
+    if token_row.status == "approved" and token_row.user_id:
         user = db.query(User).filter(User.id == token_row.user_id).first()
-        if not user:
-            return error_response("Approved token has no associated user.")
+        if user:
+            data["user"] = {"id": user.id, "email": user.email, "name": user.name}
 
-        # Session gets created here, on the untrusted device's poll request —
-        # this is the moment the untrusted device actually becomes "logged in".
-        create_session(user_id=user.id, device_id=None, response=response)
-        log_login_attempt(user.id, "qr", True, ip, None)
-
-        # One-time use: consume the token so it can't be replayed.
-        db.delete(token_row)
-        db.commit()
-
-        return success_response(
-            data={"status": "approved", "user": {"id": user.id, "email": user.email, "name": user.name}},
-            message="QR login approved. Logged in.",
-        )
-
-    return error_response("Unrecognized token status.")
+    return success_response(data=data)
 
 
 @router.post("/qr/approve")
-def qr_approve(payload: QrApproveRequest, db: DBSession = Depends(get_db)):
-    """
-    Called by the ALREADY-LOGGED-IN phone after it scans the QR code.
-    In a full build this route would itself require the phone to already have
-    a valid session (via get_current_user) — kept as an email-identified
-    approval here for hackathon simplicity; tighten before a real deployment.
-    """
+def qr_approve(payload: QrApproveRequest, request: Request, db: DBSession = Depends(get_db)):
+    current_user = get_current_user(request)
+    if not current_user:
+        return error_response("You must be logged in to approve a QR sign-in.")
+
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user or user.id != current_user["id"]:
+        return error_response("Email does not match the logged-in user.")
+
     token_row = db.query(LoginToken).filter(LoginToken.token == payload.token).first()
     if not token_row:
-        return error_response("Invalid or unknown token.")
+        return error_response("Invalid QR token.")
 
     if token_row.status != "pending":
-        return error_response(f"Token is no longer pending (status: {token_row.status}).")
+        return error_response(f"QR token is already {token_row.status}.")
 
     if token_row.expires_at < datetime.utcnow():
         token_row.status = "expired"
         db.commit()
-        return error_response("This QR code has expired. Generate a new one.")
+        return error_response("QR token has expired.")
 
-    user = db.query(User).filter(User.email == payload.email).first()
-    if not user:
-        return error_response("No account found for this email.")
-
-    token_row.user_id = user.id
     token_row.status = "approved"
+    token_row.user_id = user.id
     db.commit()
 
-    return success_response(message="Login approved for the other device.")
+    ip = _get_client_ip(request)
+    log_login_attempt(user.id, "qr", True, ip, "approved via mobile")
+
+    return success_response(message="Sign-in approved successfully.")
 
 
 # ===========================================================================
-# STEP-UP AUTH — extra OTP check for sensitive actions or untrusted devices.
-#
-# This is the "combine different factor types" approach discussed with the
-# team instead of requiring two biometrics (which WebAuthn can't distinguish
-# anyway). Section A's suspicious-login/device-trust check decides WHEN to
-# call this; Section B just provides the verification endpoint.
-#
-# Usage pattern: user is already logged in (has a valid session) but is
-# attempting something sensitive (e.g. a transfer) or logged in from a
-# device Section A flagged as untrusted — frontend calls /otp/send first,
-# then this endpoint to confirm the step-up before letting the action proceed.
+# STEP-UP AUTH & TRANSACTION-BOUND CHALLENGES
 # ===========================================================================
 
 @router.post("/step-up/verify")
 def step_up_verify(payload: StepUpVerifyRequest, request: Request, db: DBSession = Depends(get_db)):
-    """
-    Verifies an OTP as a SECOND factor for an already-logged-in user, without
-    creating a new session (they already have one). Requires the caller to
-    already be authenticated — this is not a login endpoint.
-    """
     current_user = get_current_user(request)
     if not current_user:
         return error_response("You must be logged in to perform step-up verification.")
@@ -484,34 +416,217 @@ def step_up_verify(payload: StepUpVerifyRequest, request: Request, db: DBSession
         log_login_attempt(user.id, "otp", False, ip, "step-up")
         return error_response("Incorrect OTP.")
 
+    challenge = None
+    if payload.challenge_id:
+        challenge = (
+            db.query(StepUpChallenge)
+            .filter(StepUpChallenge.id == payload.challenge_id, StepUpChallenge.user_id == user.id)
+            .first()
+        )
+        if not challenge:
+            log_login_attempt(user.id, "otp", False, ip, "step-up")
+            return error_response("Step-up challenge not found for this user.")
+        if challenge.used:
+            log_login_attempt(user.id, "otp", False, ip, "step-up")
+            return error_response("This step-up challenge was already used.")
+        if challenge.expires_at < datetime.utcnow():
+            log_login_attempt(user.id, "otp", False, ip, "step-up")
+            return error_response("Step-up challenge expired. Start the action again.")
+
     otp_row.used = True
+    if challenge:
+        challenge.used = True
     db.commit()
     log_login_attempt(user.id, "otp", True, ip, "step-up")
 
-    return success_response(message="Step-up verification successful. Sensitive action may proceed.")
+    data = {"transaction_hash": challenge.transaction_hash} if challenge else None
+    return success_response(data=data, message="Step-up verification successful. Sensitive action may proceed.")
 
 
-# ---------------------------------------------------------------------------
-# Email sending — Resend if RESEND_API_KEY is set, otherwise prints to console
-# (useful for local dev / demo dry-runs without burning email quota).
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# EMAIL VERIFICATION FLOW — Person B Task
+# ===========================================================================
 
-def _send_otp_email(to_email: str, code: str) -> None:
-    api_key = os.getenv("RESEND_API_KEY")
-    if not api_key:
-        print(f"[DEV MODE — no RESEND_API_KEY set] OTP for {to_email}: {code}")
-        return
+@router.post("/email/send-verification")
+def email_send_verification(payload: EmailVerificationSendRequest, db: DBSession = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
+    if user and user.is_verified:
+        return error_response("An account with this email already exists and is verified. Please sign in.")
 
-    try:
-        import resend
-        resend.api_key = api_key
-        resend.Emails.send({
-            "from": "SecureBank Demo <onboarding@resend.dev>",
-            "to": to_email,
-            "subject": "Your SecureBank login code",
-            "html": f"<p>Your one-time login code is <strong>{code}</strong>. "
-                    f"It expires in {OTP_EXPIRE_MINUTES} minutes.</p>",
-        })
-    except Exception as e:
-        # Don't let email failure block the demo — log it and move on.
-        print(f"[EMAIL SEND FAILED] {e}. OTP for {to_email}: {code}")
+    if not user:
+        user = User(email=payload.email, name=payload.email.split("@")[0], is_verified=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    raw_code = f"{secrets.randbelow(900000) + 100000:06d}"
+    code_hash = pwd_context.hash(raw_code)
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+
+    code_row = EmailVerificationCode(
+        user_id=user.id,
+        code_hash=code_hash,
+        expires_at=expires_at,
+    )
+    db.add(code_row)
+    db.commit()
+
+    send_email(
+        to=user.email,
+        subject="Verify your Dorito Vault Registration",
+        body=f"Your registration verification code is: <strong>{raw_code}</strong>. It expires in 15 minutes."
+    )
+
+    return success_response(message=f"Verification code sent to {user.email}.")
+
+
+@router.post("/email/verify")
+def email_verify(payload: EmailVerificationVerifyRequest, db: DBSession = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        return error_response("No registration attempt found for this email address.")
+
+    active_codes = (
+        db.query(EmailVerificationCode)
+        .filter(
+            EmailVerificationCode.user_id == user.id,
+            EmailVerificationCode.used == False,  # noqa: E712
+            EmailVerificationCode.expires_at >= datetime.utcnow(),
+        )
+        .order_by(EmailVerificationCode.created_at.desc())
+        .all()
+    )
+
+    if not active_codes:
+        return error_response("Verification code expired or not found. Request a new code.")
+
+    matched_code = None
+    for code_row in active_codes:
+        if pwd_context.verify(payload.code.strip(), code_row.code_hash):
+            matched_code = code_row
+            break
+
+    if not matched_code:
+        return error_response("Invalid verification code.")
+
+    matched_code.used = True
+    user.is_verified = True
+    db.commit()
+
+    return success_response(
+        data={"id": user.id, "email": user.email, "name": user.name, "is_verified": True},
+        message="Email verified successfully! Registration complete."
+    )
+
+
+# ===========================================================================
+# BACKUP RECOVERY CODES — Person B Task
+# ===========================================================================
+
+@router.post("/recovery-codes/generate")
+def recovery_codes_generate(payload: RecoveryCodeGenerateRequest, db: DBSession = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        return error_response("No account found for this email.")
+
+    db.query(RecoveryCode).filter(RecoveryCode.user_id == user.id, RecoveryCode.used == False).delete()  # noqa: E712
+
+    plain_codes = []
+    for _ in range(8):
+        part1 = secrets.token_hex(2).upper()
+        part2 = secrets.token_hex(2).upper()
+        code = f"{part1}-{part2}"
+        plain_codes.append(code)
+        
+        rc_row = RecoveryCode(
+            user_id=user.id,
+            code_hash=pwd_context.hash(code),
+        )
+        db.add(rc_row)
+
+    db.commit()
+
+    return success_response(
+        data={"recovery_codes": plain_codes, "count": len(plain_codes)},
+        message="Backup recovery codes generated successfully. Store these codes in a safe place!"
+    )
+
+
+@router.post("/recovery-codes/verify")
+def recovery_codes_verify(payload: RecoveryCodeVerifyRequest, response: Response, request: Request, db: DBSession = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
+    ip = _get_client_ip(request)
+
+    if not user:
+        log_login_attempt(None, "recovery_code", False, ip, payload.device_fingerprint)
+        return error_response("No account found for this email.")
+
+    if is_locked(user):
+        return error_response("Account temporarily locked due to repeated failed attempts. Try again later.")
+
+    unused_codes = (
+        db.query(RecoveryCode)
+        .filter(RecoveryCode.user_id == user.id, RecoveryCode.used == False)  # noqa: E712
+        .all()
+    )
+
+    matched_code = None
+    for rc in unused_codes:
+        if pwd_context.verify(payload.code.strip().upper(), rc.code_hash):
+            matched_code = rc
+            break
+
+    if not matched_code:
+        log_login_attempt(user.id, "recovery_code", False, ip, payload.device_fingerprint)
+        check_and_lock_if_needed(db, user, ip)
+        return error_response("Invalid or previously used recovery code.")
+
+    matched_code.used = True
+    matched_code.used_at = datetime.utcnow()
+    db.commit()
+
+    log_login_attempt(user.id, "recovery_code", True, ip, payload.device_fingerprint)
+    clear_lock(db, user)
+    create_session(user_id=user.id, device_id=None, response=response)
+
+    return success_response(
+        data={"user": {"id": user.id, "email": user.email, "name": user.name}},
+        message="Successfully authenticated using backup recovery code."
+    )
+
+
+# ===========================================================================
+# MULTI-DEVICE NUDGE ENDPOINT — Person B Task
+# ===========================================================================
+
+@router.get("/devices/nudge/{identifier}")
+def devices_nudge(identifier: str, db: DBSession = Depends(get_db)):
+    user = (
+        db.query(User)
+        .filter((User.email == identifier) | (User.id == identifier))
+        .first()
+    )
+    if not user:
+        return error_response("User not found.")
+
+    cred_count = len(user.credentials)
+    device_count = len(user.devices)
+    nudge_recommended = cred_count < 2
+
+    message = (
+        "Only 1 passkey registered. We recommend adding a secondary device or generating backup recovery codes."
+        if nudge_recommended
+        else "Multi-device setup healthy."
+    )
+
+    return success_response(
+        data={
+            "user_id": user.id,
+            "email": user.email,
+            "credential_count": cred_count,
+            "device_count": device_count,
+            "has_passkey": cred_count > 0,
+            "nudge_recommended": nudge_recommended,
+            "message": message,
+        }
+    )

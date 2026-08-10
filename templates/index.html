@@ -153,34 +153,92 @@
           </div>
         </div>
 
+        <!-- Factor 4: Account Recovery Code -->
+        <div class="p-3.5 rounded-lg bg-gray-800/80 border border-gray-700 hover:border-gray-600 transition-all">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded bg-purple-500/20 text-purple-300 text-xs">
+                <i class="fas fa-life-ring"></i>
+              </span>
+              <div>
+                <h4 class="text-xs font-bold text-white">Emergency Recovery Code</h4>
+                <p class="text-[11px] text-gray-400">Single-use backup code (e.g. A1B2-C3D4)</p>
+              </div>
+            </div>
+            <button onclick="toggleRecoverySection()" class="px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs font-bold text-gray-200 transition-all">
+              Use Code
+            </button>
+          </div>
+
+          <!-- Recovery Code Input Box -->
+          <div id="recovery-section" class="hidden pt-3 border-t border-gray-700 space-y-2 animate-fade-in">
+            <label for="recovery-code-input" class="block text-xs font-semibold text-purple-300">Enter Backup Code</label>
+            <div class="flex gap-2">
+              <input type="text" id="recovery-code-input" placeholder="A1B2-C3D4" class="w-full px-3 py-2 bs-input text-center font-mono-code text-xs text-purple-200 focus:outline-none uppercase" />
+              <button onclick="handleVerifyRecoveryCode(event)" class="py-2 px-4 rounded bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex-shrink-0">
+                Authenticate
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div>
 
-    <!-- TAB 2: REGISTER NEW ACCOUNT FORM -->
+    <!-- TAB 2: REGISTER NEW ACCOUNT FORM (STRICT 3-STEP SEQUENTIAL WORKFLOW) -->
     <div id="form-reg" class="hidden space-y-3.5">
-      <div>
-        <label for="reg-name" class="block text-xs font-bold text-gray-300 mb-1 uppercase tracking-wider">Full Name</label>
-        <input type="text" id="reg-name" placeholder="Alice Smith" class="w-full px-3 py-2.5 bs-input text-xs font-mono-code focus:outline-none" />
-      </div>
 
-      <div>
-        <label for="reg-email" class="block text-xs font-bold text-gray-300 mb-1 uppercase tracking-wider">Email Address</label>
-        <input type="email" id="reg-email" placeholder="alice@securebank.com" class="w-full px-3 py-2.5 bs-input text-xs font-mono-code focus:outline-none" required />
-      </div>
-
-      <div class="p-3 rounded-lg bg-gray-800 border border-gray-700 space-y-1">
-        <div class="flex items-center gap-1.5 text-xs font-bold text-blue-400 font-mono-code">
-          <i class="fas fa-microchip"></i> Hardware Fingerprint Binding
+      <!-- STEP 1: ENTER EMAIL & REQUEST VERIFICATION CODE -->
+      <div id="reg-step-1" class="space-y-3.5">
+        <div>
+          <label for="reg-name" class="block text-xs font-bold text-gray-300 mb-1 uppercase tracking-wider">Full Name</label>
+          <input type="text" id="reg-name" placeholder="Alice Smith" class="w-full px-3 py-2.5 bs-input text-xs font-mono-code focus:outline-none" required />
         </div>
-        <p class="text-[11px] text-gray-400">
-          Creating an account will automatically bind your current browser fingerprint (<span id="reg-fp-preview" class="font-mono-code text-blue-300">...</span>) to your profile.
-        </p>
+
+        <div>
+          <label for="reg-email" class="block text-xs font-bold text-gray-300 mb-1 uppercase tracking-wider">Email Address</label>
+          <input type="email" id="reg-email" placeholder="alice@securebank.com" class="w-full px-3 py-2.5 bs-input text-xs font-mono-code focus:outline-none" required />
+        </div>
+
+        <button id="btn-send-verification-code" onclick="handleSendVerificationStep(event)" class="w-full py-2.5 px-4 rounded btn-bs-primary flex items-center justify-center gap-2 text-xs font-bold mt-1">
+          <i class="fas fa-paper-plane"></i> Step 1: Send Verification Code to Email
+        </button>
       </div>
 
-      <button id="btn-register" onclick="handleRegister(event)" class="w-full py-2.5 px-4 rounded btn-bs-primary flex items-center justify-center gap-2 text-xs font-bold mt-1">
-        <i class="fas fa-user-check"></i> Register Account & Hardware Passkey
-      </button>
+      <!-- STEP 2: VERIFY 6-DIGIT EMAIL CODE -->
+      <div id="reg-step-2" class="hidden p-4 rounded-lg bg-emerald-900/20 border border-emerald-500/30 space-y-3 animate-fade-in">
+        <div class="flex items-center gap-2 text-xs font-bold text-emerald-400">
+          <i class="fas fa-envelope-circle-check text-base"></i> Step 2: Verify Registration Email
+        </div>
+        <p class="text-[11px] text-gray-300">
+          A 6-digit verification code has been sent to your inbox. Enter it below to verify your email address.
+        </p>
+        <div class="space-y-2">
+          <input type="text" id="email-verify-code-input" maxlength="6" placeholder="123456" class="w-full px-3 py-2.5 bs-input text-center font-mono-code text-base tracking-widest text-emerald-300 focus:outline-none" />
+          <button id="btn-submit-email-verify" onclick="handleVerifyEmailStep(event)" class="w-full py-2.5 px-4 rounded btn-bs-success text-xs font-bold flex items-center justify-center gap-2">
+            <i class="fas fa-check-circle"></i> Verify Code & Continue
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: SETUP WEBAUTHN PASSKEY & FINISH REGISTRATION -->
+      <div id="reg-step-3" class="hidden p-4 rounded-lg bg-blue-900/20 border border-blue-500/30 space-y-3 animate-fade-in">
+        <div class="flex items-center gap-2 text-xs font-bold text-blue-400">
+          <i class="fas fa-shield-cat text-base"></i> Step 3: Setup Hardware Passkey (WebAuthn)
+        </div>
+        <p class="text-[11px] text-gray-300">
+          Email verified! Optionally bind TouchID, Windows Hello, or YubiKey biometrics for instant passwordless logins.
+        </p>
+        <div class="space-y-2">
+          <button id="btn-setup-passkey-step" onclick="handlePasskeySetupStep(event)" class="w-full py-2.5 px-4 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2">
+            <i class="fas fa-fingerprint"></i> Register Hardware Passkey
+          </button>
+          <button onclick="finishRegistrationWorkflow()" class="w-full py-2 px-3 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold">
+            Skip Passkey & Complete Registration
+          </button>
+        </div>
+      </div>
 
       <p class="text-[11px] text-gray-400 text-center mt-1">
         Zero passwords stored. Authentication relies on public key cryptography.

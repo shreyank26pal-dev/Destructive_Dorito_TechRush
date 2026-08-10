@@ -1,10 +1,6 @@
 """
-Shared Pydantic schemas. Every endpoint in every section returns APIResponse.
-This is what keeps the frontend from having to special-case each section's JSON shape.
-
-MERGE NOTE: Sections A, B, and C each extended this file independently. This is
-the reconciled version — nothing below is a redesign, it's the union of what all
-three sections already built. See MERGE_NOTES.md for details.
+Shared Pydantic schemas — reconciled union of Section A, Section B, and Section C.
+Every endpoint in every section returns APIResponse.
 """
 from datetime import datetime
 from typing import Any, Optional
@@ -13,7 +9,7 @@ from pydantic import BaseModel, EmailStr
 
 
 class APIResponse(BaseModel):
-    status: str            # "success" | "error"  -- use these exact strings, nothing else
+    status: str            # "success" | "error"
     data: Optional[Any] = None
     message: Optional[str] = None
 
@@ -46,6 +42,7 @@ class UserOut(BaseModel):
     id: str
     email: str
     name: Optional[str] = None
+    is_verified: Optional[bool] = False
 
     class Config:
         from_attributes = True
@@ -83,7 +80,7 @@ class OtpVerifyRequest(BaseModel):
 
 class WebAuthnRegisterVerifyRequest(BaseModel):
     email: EmailStr
-    credential: dict  # raw credential JSON from the browser's navigator.credentials.create()
+    credential: dict
 
 
 class WebAuthnLoginOptionsRequest(BaseModel):
@@ -92,23 +89,50 @@ class WebAuthnLoginOptionsRequest(BaseModel):
 
 class WebAuthnLoginVerifyRequest(BaseModel):
     email: EmailStr
-    credential: dict  # raw credential JSON from navigator.credentials.get()
+    credential: dict
     device_fingerprint: Optional[str] = None
 
 
 # --- Section B: QR cross-device login ---
 
 class QrGenerateRequest(BaseModel):
-    device_fingerprint: Optional[str] = None  # the UNTRUSTED device requesting the QR
+    device_fingerprint: Optional[str] = None
 
 
 class QrApproveRequest(BaseModel):
     token: str
-    email: EmailStr  # the ALREADY-LOGGED-IN phone/device approving, identifies which user
+    email: EmailStr
 
 
-# --- Section B: step-up auth (extra OTP check for sensitive actions) ---
+# --- Section B / Section A: step-up auth ---
 
 class StepUpVerifyRequest(BaseModel):
     email: EmailStr
     code: str
+    challenge_id: Optional[str] = None
+
+
+class StepUpChallengeRequest(BaseModel):
+    user_id: str
+    transaction: dict
+
+
+# --- Section B: Email Verification & Backup Recovery Codes ---
+
+class EmailVerificationSendRequest(BaseModel):
+    email: EmailStr
+
+
+class EmailVerificationVerifyRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+
+class RecoveryCodeGenerateRequest(BaseModel):
+    email: EmailStr
+
+
+class RecoveryCodeVerifyRequest(BaseModel):
+    email: EmailStr
+    code: str
+    device_fingerprint: Optional[str] = None

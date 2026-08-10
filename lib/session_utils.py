@@ -22,6 +22,7 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from database import SessionLocal
 import models
+from lib.ip_utils import hash_ip, resolve_location
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "session_token")
@@ -97,7 +98,12 @@ def get_current_user(request: Request) -> Optional[dict]:
         if not user:
             return None
 
-        return {"id": user.id, "email": user.email, "name": user.name}
+        return {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "is_verified": getattr(user, "is_verified", False),
+        }
     finally:
         db.close()
 
@@ -141,9 +147,25 @@ def log_login_attempt(
     ip_address: Optional[str],
     device_info: Optional[str],
 ) -> None:
-    """Writes one row to login_history. method must be one of the 3 fixed strings."""
-    if method not in ("webauthn", "otp", "qr"):
-        raise ValueError(f"Invalid login method '{method}'. Must be webauthn, otp, or qr.")
+    """
+    Writes one row to login_history. method must be one of the 4 fixed strings
+    (webauthn, otp, qr, recovery_code -- recovery_code added by Section B for
+    account recovery; kept in sync with the comment on models.LoginHistory.method).
+
+    Section C, item 3 -- ip_address here is the RAW incoming IP (e.g. from
+    request.client.host). It is never written to the database as-is: it's
+    hashed (for correlation) and resolved to a rough city/country (for
+    human-readable display) before storage, then discarded. See lib/ip_utils.py.
+    """
+    if method not in ("webauthn", "otp", "qr", "recovery_code"):
+        raise ValueError(
+            f"Invalid login method '{method}'. Must be webauthn, otp, qr, or recovery_code."
+        )
+
+    ip_hash = hash_ip(ip_address)
+    city, country = resolve_location(ip_address)
+    # raw ip_address is not referenced again after this point -- only the hash
+    # and resolved city/country get persisted.
 
     db = SessionLocal()
     try:
@@ -151,7 +173,9 @@ def log_login_attempt(
             user_id=user_id,
             method=method,
             success=success,
-            ip_address=ip_address,
+            ip_address=ip_hash,
+            city=city,
+            country=country,
             device_info=device_info,
         )
         db.add(entry)

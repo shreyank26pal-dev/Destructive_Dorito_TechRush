@@ -10,6 +10,7 @@ let currentUser = null;
 let deviceFingerprint = null;
 let pendingChallenge = null;
 let qrPollingInterval = null;
+let pendingRegEmail = null;
 
 // ==========================================================================
 // 1. WEBAUTHN / FIDO2 BASE64URL & ARRAYBUFFER HELPERS
@@ -100,7 +101,17 @@ async function apiCall(url, method = 'GET', data = null) {
 
   try {
     const response = await fetch(url, options);
-    const resData = await response.json();
+    const text = await response.text();
+    let resData;
+    try {
+      resData = JSON.parse(text);
+    } catch (parseErr) {
+      console.error(`[Non-JSON Response] (${url}):`, text);
+      return { 
+        status: 'error', 
+        message: response.ok ? text : `Server Error (${response.status}): ${text.substring(0, 100)}` 
+      };
+    }
     return resData;
   } catch (err) {
     console.error(`[API Error] (${url}):`, err);
@@ -181,11 +192,12 @@ async function checkAuthSession() {
 }
 
 // ==========================================================================
-// 5. REGISTRATION & WEBAUTHN / FIDO2 BIOMETRICS
+// 5. STRICT 3-STEP SEQUENTIAL REGISTRATION WORKFLOW
 // ==========================================================================
 
-async function handleRegister(event) {
-  event.preventDefault();
+// STEP 1: Enter Name & Email -> Dispatch Verification Code
+async function handleSendVerificationStep(event) {
+  if (event) event.preventDefault();
   const name = document.getElementById('reg-name').value.trim();
   const email = document.getElementById('reg-email').value.trim();
 
@@ -194,36 +206,92 @@ async function handleRegister(event) {
     return;
   }
 
-  const btn = document.getElementById('btn-register');
+  const btn = document.getElementById('btn-send-verification-code');
   btn.disabled = true;
-  btn.innerText = 'Creating Account...';
+  btn.innerText = 'Sending Code...';
 
-  // 1. Register User in backend (/api/entry/register)
-  const res = await apiCall('/api/entry/register', 'POST', { name, email });
-  if (res.status !== 'success') {
-    showToast(res.message || 'Registration failed.', 'error');
-    btn.disabled = false;
-    btn.innerText = 'Create Account';
-    return;
-  }
-
-  const userId = res.data.id;
-  showToast('Account created successfully!', 'success');
-
-  // 2. Check & Register Device (/api/entry/check-device)
-  await apiCall('/api/entry/check-device', 'POST', {
-    user_id: userId,
-    fingerprint: deviceFingerprint
-  });
-
-  // Prompt to register WebAuthn passkey
-  const setupPasskey = confirm('Account created! Would you like to register a Hardware Biometrics / Passkey (TouchID, FaceID, Windows Hello) for instant passwordless logins?');
-  if (setupPasskey) {
-    await registerWebAuthn(email);
+  // Call send-verification
+  const res = await apiCall('/api/security/email/send-verification', 'POST', { email });
+  
+  if (res.status === 'success') {
+    pendingRegEmail = email;
+    showToast(`Verification code sent to ${email}! Check your inbox.`, 'success');
+    
+    // Hide Step 1, Show Step 2
+    document.getElementById('reg-step-1').classList.add('hidden');
+    const step2 = document.getElementById('reg-step-2');
+    step2.classList.remove('hidden');
+    const codeInput = document.getElementById('email-verify-code-input');
+    if (codeInput) codeInput.focus();
+  } else {
+    showToast(res.message || 'Failed to send verification email.', 'error');
   }
 
   btn.disabled = false;
-  btn.innerText = 'Create Account';
+  btn.innerText = 'Step 1: Send Verification Code to Email';
+}
+
+// STEP 2: Verify 6-Digit Email OTP Code
+async function handleVerifyEmailStep(event) {
+  if (event) event.preventDefault();
+  const email = pendingRegEmail || document.getElementById('reg-email').value.trim();
+  const code = document.getElementById('email-verify-code-input').value.trim();
+
+  if (!email || !code) {
+    showToast('Please enter the 6-digit verification code.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit-email-verify');
+  btn.disabled = true;
+  btn.innerText = 'Verifying Code...';
+
+  const res = await apiCall('/api/security/email/verify', 'POST', { email, code });
+  if (res.status === 'success') {
+    showToast('Email verified successfully!', 'success');
+
+    // Also register user device binding
+    if (res.data && res.data.id) {
+      await apiCall('/api/entry/check-device', 'POST', {
+        user_id: res.data.id,
+        fingerprint: deviceFingerprint
+      });
+    }
+
+    // Hide Step 2, Show Step 3 (Passkey setup)
+    document.getElementById('reg-step-2').classList.add('hidden');
+    document.getElementById('reg-step-3').classList.remove('hidden');
+  } else {
+    showToast(res.message || 'Invalid or expired verification code.', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerText = 'Verify Code & Continue';
+}
+
+// STEP 3: Setup WebAuthn Passkey
+async function handlePasskeySetupStep(event) {
+  if (event) event.preventDefault();
+  const email = pendingRegEmail || document.getElementById('reg-email').value.trim();
+  
+  if (!email) {
+    showToast('Email is required for passkey setup.', 'error');
+    return;
+  }
+
+  await registerWebAuthn(email);
+  finishRegistrationWorkflow();
+}
+
+function finishRegistrationWorkflow() {
+  const email = pendingRegEmail || document.getElementById('reg-email').value.trim();
+  showToast('Registration complete! Please sign in.', 'success');
+
+  // Reset reg forms
+  document.getElementById('reg-step-1').classList.remove('hidden');
+  document.getElementById('reg-step-2').classList.add('hidden');
+  document.getElementById('reg-step-3').classList.add('hidden');
+
   switchTab('login');
   document.getElementById('login-email').value = email;
 }
@@ -285,6 +353,10 @@ async function registerWebAuthn(email) {
   }
 }
 
+// ==========================================================================
+// 6. WEBAUTHN LOGIN FLOW
+// ==========================================================================
+
 async function handleWebAuthnLogin(event) {
   if (event) event.preventDefault();
   const email = document.getElementById('login-email').value.trim();
@@ -299,7 +371,7 @@ async function handleWebAuthnLogin(event) {
     // 1. Get login options (/api/security/webauthn/login-options)
     const optionsRes = await apiCall('/api/security/webauthn/login-options', 'POST', { email });
     if (optionsRes.status !== 'success') {
-      showToast(optionsRes.message || 'Could not fetch passkey options.', 'error');
+      showToast(optionsRes.message || 'Biometric login failed.', 'error');
       return;
     }
 
@@ -312,10 +384,10 @@ async function handleWebAuthnLogin(event) {
       }));
     }
 
-    // 2. Browser credentials prompt
+    // 2. Prompt user for biometric scan
     const assertion = await navigator.credentials.get({ publicKey: options });
 
-    // 3. Format payload
+    // 3. Format assertion payload
     const credentialJSON = {
       id: assertion.id,
       rawId: bufferToBase64URL(assertion.rawId),
@@ -328,7 +400,7 @@ async function handleWebAuthnLogin(event) {
       }
     };
 
-    // 4. Verify login with backend (/api/security/webauthn/login-verify)
+    // 4. Send to backend (/api/security/webauthn/login-verify)
     const verifyRes = await apiCall('/api/security/webauthn/login-verify', 'POST', {
       email,
       credential: credentialJSON,
@@ -336,71 +408,57 @@ async function handleWebAuthnLogin(event) {
     });
 
     if (verifyRes.status === 'success') {
-      showToast('Biometric verification passed! Accessing Dorito Vault...', 'success');
-      setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+      showToast('Passkey login successful!', 'success');
+      setTimeout(() => { window.location.href = '/dashboard'; }, 600);
     } else {
-      showToast(verifyRes.message || 'Biometric authentication failed.', 'error');
+      showToast(verifyRes.message || 'Biometric verification failed.', 'error');
     }
   } catch (err) {
     console.error("WebAuthn Login Error:", err);
-    showToast(err.message || 'Biometric login cancelled or failed.', 'error');
+    showToast(err.message || 'Biometric login cancelled or unsupported.', 'error');
   }
 }
 
 // ==========================================================================
-// 6. HASHED EMAIL OTP FLOW
+// 7. HASHED EMAIL OTP LOGIN FLOW
 // ==========================================================================
 
-let otpCountdownTimer = null;
 async function handleSendOTP() {
   const email = document.getElementById('login-email').value.trim();
   if (!email) {
-    showToast('Please enter your account email to receive an OTP.', 'error');
+    showToast('Please enter your email address first.', 'error');
     return;
   }
 
-  const btnSend = document.getElementById('btn-send-otp');
-  btnSend.disabled = true;
-  btnSend.innerText = 'Sending...';
+  const btn = document.getElementById('btn-send-otp');
+  btn.disabled = true;
+  btn.innerText = 'Sending...';
 
   const res = await apiCall('/api/security/otp/send', 'POST', { email });
   if (res.status === 'success') {
-    showToast('OTP code sent to your email! (Check backend console if in dev mode)', 'success');
+    showToast(`Ephemeral OTP code emailed to ${email}.`, 'success');
     document.getElementById('otp-section').classList.remove('hidden');
-    
-    let secondsLeft = 60;
-    btnSend.innerText = `Resend (${secondsLeft}s)`;
-    clearInterval(otpCountdownTimer);
-    otpCountdownTimer = setInterval(() => {
-      secondsLeft--;
-      if (secondsLeft <= 0) {
-        clearInterval(otpCountdownTimer);
-        btnSend.disabled = false;
-        btnSend.innerText = 'Send Code';
-      } else {
-        btnSend.innerText = `Resend (${secondsLeft}s)`;
-      }
-    }, 1000);
   } else {
-    showToast(res.message || 'Failed to send OTP.', 'error');
-    btnSend.disabled = false;
-    btnSend.innerText = 'Send Code';
+    showToast(res.message || 'Failed to send OTP code.', 'error');
   }
+
+  btn.disabled = false;
+  btn.innerText = 'Send Code';
 }
 
 async function handleVerifyOTP(event) {
-  event.preventDefault();
+  if (event) event.preventDefault();
   const email = document.getElementById('login-email').value.trim();
   const code = document.getElementById('otp-code').value.trim();
 
   if (!email || !code) {
-    showToast('Please enter both email and 6-digit OTP code.', 'error');
+    showToast('Email and 6-digit OTP code are required.', 'error');
     return;
   }
 
-  const btnVerify = document.getElementById('btn-verify-otp');
-  btnVerify.disabled = true;
-  btnVerify.innerText = 'Verifying...';
+  const btn = document.getElementById('btn-verify-otp');
+  btn.disabled = true;
+  btn.innerText = 'Verifying...';
 
   const res = await apiCall('/api/security/otp/verify', 'POST', {
     email,
@@ -409,174 +467,135 @@ async function handleVerifyOTP(event) {
   });
 
   if (res.status === 'success') {
-    showToast('OTP verified! Accessing Dorito Vault...', 'success');
-    setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+    showToast('OTP verification successful! Logging in...', 'success');
+    setTimeout(() => { window.location.href = '/dashboard'; }, 600);
   } else {
     showToast(res.message || 'Invalid or expired OTP code.', 'error');
-    btnVerify.disabled = false;
-    btnVerify.innerText = 'Verify & Login';
   }
+
+  btn.disabled = false;
+  btn.innerText = 'Verify & Login';
 }
 
 // ==========================================================================
-// 7. QR CROSS-DEVICE SYNC & POLLING
+// 8. QR CODE CROSS-DEVICE AUTHORIZATION ENGINE
 // ==========================================================================
 
-async function toggleQrSection() {
-  const qrSection = document.getElementById('qr-section');
-  if (!qrSection) return;
+function toggleQrSection() {
+  const section = document.getElementById('qr-section');
+  if (!section) return;
 
-  if (qrSection.classList.contains('hidden')) {
-    qrSection.classList.remove('hidden');
-    await startQrGeneration();
+  if (section.classList.contains('hidden')) {
+    section.classList.remove('hidden');
+    generateQrToken();
   } else {
-    qrSection.classList.add('hidden');
-    clearInterval(qrPollingInterval);
+    section.classList.add('hidden');
+    if (qrPollingInterval) clearInterval(qrPollingInterval);
   }
 }
 
-async function startQrGeneration() {
-  const qrContainer = document.getElementById('qr-container');
+async function generateQrToken() {
+  const container = document.getElementById('qr-container');
   const statusText = document.getElementById('qr-status-text');
-  if (!qrContainer) return;
+  if (!container) return;
 
-  qrContainer.innerHTML = '';
-  statusText.innerText = 'Generating token...';
+  container.innerHTML = '<i class="fas fa-circle-notch fa-spin text-xl text-blue-500"></i>';
+  if (statusText) statusText.innerText = 'Generating token...';
 
-  const res = await apiCall('/api/security/qr/generate', 'POST', {
-    device_fingerprint: deviceFingerprint
-  });
-
+  const res = await apiCall('/api/security/qr/generate', 'POST');
   if (res.status === 'success' && res.data) {
     const token = res.data.token;
-    statusText.innerText = 'Waiting for phone authorization...';
+    container.innerHTML = '';
+    
+    // Render QR Code canvas
+    if (window.QRCode) {
+      new QRCode(container, {
+        text: `https://securebank.demo/qr-auth?token=${token}`,
+        width: 140,
+        height: 140,
+        colorDark: '#0d6efd',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } else {
+      container.innerText = token;
+    }
 
-    // Render QR Code using QRCode library
-    new QRCode(qrContainer, {
-      text: token,
-      width: 140,
-      height: 140,
-      colorDark: "#121416",
-      colorLight: "#FFFFFF",
-      correctLevel: QRCode.CorrectLevel.H
-    });
+    if (statusText) statusText.innerText = 'Awaiting mobile scan approval...';
+    startQrPolling(token);
+  } else {
+    if (statusText) statusText.innerText = 'QR Token generation failed.';
+  }
+}
 
-    // Poll status every 2 seconds (/api/security/qr/status/{token})
-    clearInterval(qrPollingInterval);
-    qrPollingInterval = setInterval(async () => {
-      const statusRes = await apiCall(`/api/security/qr/status/${token}`);
-      if (statusRes.status === 'success' && statusRes.data) {
-        const st = statusRes.data.status;
-        if (st === 'approved') {
-          clearInterval(qrPollingInterval);
-          statusText.innerText = 'QR Authorized! Logging in...';
-          showToast('Cross-device login approved by your mobile phone!', 'success');
-          setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
-        } else if (st === 'expired' || st === 'denied') {
-          clearInterval(qrPollingInterval);
-          statusText.innerText = `Token ${st}. Refreshing...`;
-          showToast(`QR session ${st}.`, 'error');
+function startQrPolling(token) {
+  if (qrPollingInterval) clearInterval(qrPollingInterval);
+
+  qrPollingInterval = setInterval(async () => {
+    const res = await apiCall(`/api/security/qr/status/${token}`);
+    if (res.status === 'success' && res.data) {
+      const qrStatus = res.data.status;
+      const statusText = document.getElementById('qr-status-text');
+
+      if (qrStatus === 'approved') {
+        clearInterval(qrPollingInterval);
+        if (statusText) statusText.innerText = '✅ Sign-in approved on mobile!';
+        showToast('QR Sign-in approved on mobile device!', 'success');
+        
+        // Log in session
+        if (res.data.user) {
+          setTimeout(() => { window.location.href = '/dashboard'; }, 800);
         }
+      } else if (qrStatus === 'expired') {
+        clearInterval(qrPollingInterval);
+        if (statusText) statusText.innerText = '❌ QR Token expired.';
       }
-    }, 2000);
-  } else {
-    statusText.innerText = 'Failed to generate QR token.';
-    showToast(res.message || 'QR generation error', 'error');
-  }
+    }
+  }, 2000);
 }
 
-function openQrApprovalModal() {
-  const modal = document.getElementById('qr-approve-modal');
-  if (modal) modal.classList.add('active');
-  if (currentUser && currentUser.email) {
-    document.getElementById('qr-approve-email').value = currentUser.email;
-  }
-}
+async function handleApproveQRModal() {
+  const token = prompt('Enter QR Token to simulate Mobile Approval (or leave blank to approve active token):');
+  const email = currentUser ? currentUser.email : prompt('Enter logged-in email address to approve QR:');
 
-function closeQrApprovalModal() {
-  const modal = document.getElementById('qr-approve-modal');
-  if (modal) modal.classList.remove('active');
-}
-
-async function handleApproveQrToken(event) {
-  event.preventDefault();
-  const email = document.getElementById('qr-approve-email').value.trim();
-  const token = document.getElementById('qr-approve-token').value.trim();
-
-  if (!email || !token) {
-    showToast('Please fill in both email and QR token.', 'error');
+  if (!email) {
+    showToast('Logged-in email is required to approve QR.', 'error');
     return;
   }
 
-  const res = await apiCall('/api/security/qr/approve', 'POST', { token, email });
+  const targetToken = token || prompt('Paste the QR token from the login box:');
+  if (!targetToken) return;
+
+  const res = await apiCall('/api/security/qr/approve', 'POST', { email, token: targetToken });
   if (res.status === 'success') {
-    showToast('Login approved for the other device!', 'success');
-    closeQrApprovalModal();
+    showToast('QR Token approved successfully!', 'success');
   } else {
-    showToast(res.message || 'QR approval failed.', 'error');
+    showToast(res.message || 'QR Approval failed.', 'error');
   }
 }
 
 // ==========================================================================
-// 8. STEP-UP AUTHENTICATION (FOR WIRE TRANSFERS & SENSITIVE ACTIONS)
-// ==========================================================================
-
-function triggerWireTransferStepUp() {
-  if (!currentUser) return;
-  const modal = document.getElementById('step-up-modal');
-  document.getElementById('step-up-email').value = currentUser.email;
-  document.getElementById('step-up-code').value = '';
-  modal.classList.add('active');
-}
-
-function closeStepUpModal() {
-  const modal = document.getElementById('step-up-modal');
-  if (modal) modal.classList.remove('active');
-}
-
-async function handleSendStepUpOtp() {
-  if (!currentUser || !currentUser.email) return;
-  const res = await apiCall('/api/security/otp/send', 'POST', { email: currentUser.email });
-  if (res.status === 'success') {
-    showToast('Step-Up OTP code sent to your email!', 'success');
-  } else {
-    showToast(res.message || 'Failed to send Step-Up OTP.', 'error');
-  }
-}
-
-async function handleExecuteStepUp(event) {
-  event.preventDefault();
-  const email = document.getElementById('step-up-email').value.trim();
-  const code = document.getElementById('step-up-code').value.trim();
-
-  if (!code) {
-    showToast('Please enter the 6-digit Step-Up code.', 'error');
-    return;
-  }
-
-  const res = await apiCall('/api/security/step-up/verify', 'POST', { email, code });
-  if (res.status === 'success') {
-    showToast('Step-Up verification passed! Wire transfer of $10,000 executed.', 'success');
-    closeStepUpModal();
-  } else {
-    showToast(res.message || 'Step-Up verification failed.', 'error');
-  }
-}
-
-// ==========================================================================
-// 9. DASHBOARD INITIALIZATION & AUDIT TRAIL
+// 9. DASHBOARD LOGIC, WIRE TRANSFER STEP-UP & AUDIT LOGS
 // ==========================================================================
 
 async function initDashboard() {
   if (!currentUser) return;
 
-  document.getElementById('dash-user-name').innerText = currentUser.name || 'Vault Member';
-  document.getElementById('dash-user-email').innerText = currentUser.email;
-  document.getElementById('profile-name-input').value = currentUser.name || '';
-  document.getElementById('profile-email-input').value = currentUser.email;
+  const nameEl = document.getElementById('dash-user-name');
+  const emailEl = document.getElementById('dash-user-email');
+  const profileNameInput = document.getElementById('profile-name-input');
+  const profileEmailInput = document.getElementById('profile-email-input');
+
+  if (nameEl) nameEl.innerText = currentUser.name || 'Vault Member';
+  if (emailEl) emailEl.innerText = currentUser.email || '';
+  if (profileNameInput) profileNameInput.value = currentUser.name || '';
+  if (profileEmailInput) profileEmailInput.value = currentUser.email || '';
 
   await fetchSecurityAlerts(currentUser.id);
   await fetchLoginHistory();
+  if (currentUser.email) {
+    fetchMultiDeviceNudge(currentUser.email);
+  }
 }
 
 async function fetchSecurityAlerts(userId) {
@@ -630,53 +649,77 @@ async function fetchLoginHistory() {
   const tbody = document.getElementById('history-tbody');
   if (!tbody) return;
 
-  const res = await apiCall('/api/sessions/login-history?limit=50');
+  const res = await apiCall('/api/sessions/history');
   if (res.status === 'success' && res.data) {
-    const logs = res.data;
-    if (logs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-gray-500 text-xs font-mono-code">No cryptographic login events recorded yet.</td></tr>`;
+    const history = res.data;
+    if (history.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500 text-xs font-mono-code">No audit records found.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = logs.map(log => {
-      let badgeClass = 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
-      let icon = 'fa-fingerprint';
-      if (log.method === 'otp') { badgeClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'; icon = 'fa-envelope-open-text'; }
-      if (log.method === 'qr') { badgeClass = 'bg-red-500/20 text-red-400 border border-red-500/30'; icon = 'fa-qrcode'; }
-
-      const statusBadge = log.success
-        ? `<span class="px-2 py-0.5 text-xs rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold font-mono-code flex items-center gap-1 w-fit"><i class="fas fa-circle-check text-[10px]"></i> Success</span>`
-        : `<span class="px-2 py-0.5 text-xs rounded bg-red-500/20 text-red-400 border border-red-500/30 font-bold font-mono-code flex items-center gap-1 w-fit"><i class="fas fa-circle-xmark text-[10px]"></i> Failed</span>`;
-
-      return `
-        <tr class="border-b border-gray-800 hover:bg-gray-800/40 transition-all">
-          <td class="py-3 px-3">
-            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold font-mono-code ${badgeClass}">
-              <i class="fas ${icon}"></i> ${log.method.toUpperCase()}
-            </span>
-          </td>
-          <td class="py-3 px-3">${statusBadge}</td>
-          <td class="py-3 px-3 text-xs font-mono-code text-gray-300">${log.ip_address || '127.0.0.1'}</td>
-          <td class="py-3 px-3 text-xs font-mono-code text-gray-400 truncate max-w-xs">${log.device_info || '—'}</td>
-          <td class="py-3 px-3 text-xs font-mono-code text-gray-400">${new Date(log.created_at).toLocaleString()}</td>
-        </tr>
-      `;
-    }).join('');
+    tbody.innerHTML = history.map(h => `
+      <tr class="border-b border-gray-800/60 hover:bg-gray-800/40 text-xs font-mono-code transition-all">
+        <td class="py-2.5 px-3 uppercase font-bold ${h.method === 'webauthn' ? 'text-blue-400' : 'text-emerald-400'}">
+          <i class="fas ${h.method === 'webauthn' ? 'fa-fingerprint' : 'fa-envelope-open-text'} mr-1"></i> ${h.method}
+        </td>
+        <td class="py-2.5 px-3 font-semibold ${h.success ? 'text-emerald-400' : 'text-red-400'}">
+          ${h.success ? '✓ SUCCESS' : '✗ FAILED'}
+        </td>
+        <td class="py-2.5 px-3 text-gray-300">${h.ip_address || '127.0.0.1'}</td>
+        <td class="py-2.5 px-3 text-gray-400">${h.device_fingerprint ? h.device_fingerprint.substring(0, 14) + '...' : 'n/a'}</td>
+        <td class="py-2.5 px-3 text-gray-400">${new Date(h.created_at).toLocaleString()}</td>
+      </tr>
+    `).join('');
   }
 }
 
-async function handleUpdateProfile(event) {
-  event.preventDefault();
-  const name = document.getElementById('profile-name-input').value.trim();
+async function triggerWireTransferStepUp() {
+  if (!currentUser) return;
 
-  const res = await apiCall('/api/sessions/profile/update', 'POST', { name });
-  if (res.status === 'success') {
-    showToast('Profile updated successfully!', 'success');
-    currentUser.name = name;
-    document.getElementById('dash-user-name').innerText = name || 'Vault Member';
-    document.getElementById('nav-user-name').innerText = name || currentUser.email;
+  const amount = 10000;
+  const recipient = "Global Reserve Vault #4810";
+  const transaction = { action: "wire_transfer", amount: amount, recipient: recipient };
+
+  // 1. Create Step-Up Challenge (/api/entry/step-up/challenge)
+  showToast('Creating transaction-bound Step-Up challenge...', 'info');
+  const challengeRes = await apiCall('/api/entry/step-up/challenge', 'POST', {
+    user_id: currentUser.id,
+    transaction: transaction
+  });
+
+  if (challengeRes.status !== 'success' || !challengeRes.data) {
+    showToast(challengeRes.message || 'Failed to create Step-Up challenge.', 'error');
+    return;
+  }
+
+  const challengeId = challengeRes.data.challenge_id;
+
+  // 2. Request OTP Code to be sent to user email
+  const otpRes = await apiCall('/api/security/otp/send', 'POST', { email: currentUser.email });
+  if (otpRes.status !== 'success') {
+    showToast('Failed to send Step-Up OTP code.', 'error');
+    return;
+  }
+
+  showToast(`Step-Up OTP code sent to ${currentUser.email}!`, 'info');
+
+  const code = prompt(`SECURE WIRE TRANSFER AUTHORIZATION\nTransfer: $10,000.00 to ${recipient}\n\nEnter the 6-digit OTP code sent to ${currentUser.email}:`);
+  if (!code) {
+    showToast('Wire transfer cancelled.', 'warning');
+    return;
+  }
+
+  // 3. Verify Step-Up Code with bound challenge_id
+  const verifyRes = await apiCall('/api/security/step-up/verify', 'POST', {
+    email: currentUser.email,
+    code: code.trim(),
+    challenge_id: challengeId
+  });
+
+  if (verifyRes.status === 'success') {
+    showToast('✅ WIRE TRANSFER AUTHORIZED SUCCESSFULLY! $10,000.00 transferred.', 'success');
   } else {
-    showToast(res.message || 'Failed to update profile.', 'error');
+    showToast(verifyRes.message || 'Step-Up verification failed. Wire transfer rejected.', 'error');
   }
 }
 
@@ -685,13 +728,26 @@ async function handleDashboardRegisterPasskey() {
   await registerWebAuthn(currentUser.email);
 }
 
+async function handleUpdateProfile(event) {
+  event.preventDefault();
+  const name = document.getElementById('profile-name-input').value.trim();
+  if (!name) return;
+
+  const res = await apiCall('/api/sessions/profile', 'PUT', { name });
+  if (res.status === 'success') {
+    showToast('Profile updated successfully!', 'success');
+    currentUser.name = name;
+    initDashboard();
+  } else {
+    showToast(res.message || 'Failed to update profile.', 'error');
+  }
+}
+
 async function handleLogout() {
   const res = await apiCall('/api/sessions/logout', 'POST');
   if (res.status === 'success') {
-    showToast('Logged out successfully.', 'info');
-    setTimeout(() => { window.location.href = '/'; }, 400);
-  } else {
-    showToast(res.message || 'Logout failed.', 'error');
+    showToast('Logged out of Dorito Vault session.', 'info');
+    setTimeout(() => { window.location.href = '/'; }, 600);
   }
 }
 
@@ -733,7 +789,85 @@ function switchTab(tabName) {
 }
 
 // ==========================================================================
-// 10. BACKGROUND CANVAS ANIMATION (BOOTSTRAP BLUE PARTICLES)
+// 10. RECOVERY CODES & MULTI-DEVICE NUDGE
+// ==========================================================================
+
+function toggleRecoverySection() {
+  const section = document.getElementById('recovery-section');
+  if (section) section.classList.toggle('hidden');
+}
+
+async function handleVerifyRecoveryCode(event) {
+  if (event) event.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const code = document.getElementById('recovery-code-input').value.trim();
+
+  if (!email || !code) {
+    showToast('Please enter your account email and emergency recovery code.', 'error');
+    return;
+  }
+
+  showToast('Verifying single-use emergency recovery code...', 'info');
+
+  const res = await apiCall('/api/security/recovery-codes/verify', 'POST', {
+    email,
+    code,
+    device_fingerprint: deviceFingerprint
+  });
+
+  if (res.status === 'success') {
+    showToast('Authenticated via emergency recovery code!', 'success');
+    setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+  } else {
+    showToast(res.message || 'Invalid or already used recovery code.', 'error');
+  }
+}
+
+async function handleGenerateRecoveryCodes() {
+  if (!currentUser || !currentUser.email) {
+    showToast('Please sign in first.', 'error');
+    return;
+  }
+
+  if (!confirm('Generate new emergency recovery codes? Any previous un-used recovery codes will be invalidated.')) return;
+
+  const res = await apiCall('/api/security/recovery-codes/generate', 'POST', { email: currentUser.email });
+  if (res.status === 'success' && res.data && res.data.recovery_codes) {
+    showToast('Generated 8 emergency recovery codes! Store them safely.', 'success');
+    const displayBox = document.getElementById('recovery-codes-display');
+    const grid = document.getElementById('recovery-codes-grid');
+    if (displayBox && grid) {
+      grid.innerHTML = res.data.recovery_codes.map(c => `
+        <div class="p-1.5 rounded bg-black/50 border border-purple-500/20 text-center font-mono-code">${c}</div>
+      `).join('');
+      displayBox.classList.remove('hidden');
+    }
+  } else {
+    showToast(res.message || 'Failed to generate recovery codes.', 'error');
+  }
+}
+
+async function fetchMultiDeviceNudge(email) {
+  const badge = document.getElementById('nudge-badge');
+  const messageEl = document.getElementById('nudge-message');
+  if (!badge || !messageEl) return;
+
+  const res = await apiCall(`/api/security/devices/nudge/${email}`);
+  if (res.status === 'success' && res.data) {
+    const d = res.data;
+    if (d.nudge_recommended) {
+      badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30';
+      badge.innerText = '⚠️ Action Recommended';
+    } else {
+      badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      badge.innerText = '🟢 Healthy Setup';
+    }
+    messageEl.innerText = d.message;
+  }
+}
+
+// ==========================================================================
+// 11. BACKGROUND CANVAS ANIMATION (BOOTSTRAP BLUE PARTICLES)
 // ==========================================================================
 
 function initParticleCanvas() {

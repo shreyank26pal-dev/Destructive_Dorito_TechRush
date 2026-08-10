@@ -1,28 +1,48 @@
 """
 Entry point. All three section routers are wired in below.
-
-MERGE NOTE on prefixes: Section B's router (security.py) declares no prefix of
-its own — it's applied here via include_router(..., prefix=...). Sections A's
-and C's routers (auth_entry.py, sessions.py) already declare their own prefix
-via APIRouter(prefix="/api/..."), so they're included with no extra prefix arg.
-Do not add prefix= to those two or routes will double up (e.g. /api/sessions/api/sessions/me).
+Reconciled for Section A, Section B, and Section C.
 """
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from database import Base, engine
 from routers import security
 from routers.auth_entry import router as auth_entry_router
 from routers.sessions import router as sessions_router
+from lib.rate_limit import limiter
+from schemas import error_response
 
 app = FastAPI(title="Dorito Vault — Passwordless Auth")
 
+# Section A, Day 1 — global rate limiting
+def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content=error_response("Rate limit exceeded (5 requests/minute). Please wait a minute before trying again.")
+    )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000"],
+    # NOTE: allow_origins=["*"] combined with allow_credentials=True is
+    # invalid per the CORS spec -- browsers silently reject/strip credentials
+    # (your session cookie) on wildcard-origin responses. Since the frontend
+    # is served by this same FastAPI app (templates/), same-origin requests
+    # don't need CORS at all -- these origins only matter if you open the
+    # frontend from a different port during testing. Add any other real
+    # origins you actually use here explicitly; never use "*" with credentials.
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,8 +58,6 @@ app.include_router(sessions_router, tags=["Section C — Sessions"])
 
 @app.on_event("startup")
 def on_startup():
-    # Dev convenience only. Once the schema is locked and shared on Supabase,
-    # switch to Alembic migrations instead of create_all.
     Base.metadata.create_all(bind=engine)
 
 
