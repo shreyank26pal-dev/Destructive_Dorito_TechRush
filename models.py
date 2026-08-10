@@ -1,15 +1,17 @@
 """
-Shared SQLAlchemy models — field names locked in CONTRACT.md section 3.
-Nobody adds/renames a column without asking the other two sections first.
+Shared SQLAlchemy models — reconciled version combining Section A, B, and C features.
 
 Ownership (who WRITES to each table — see CONTRACT.md section 3 comments):
-  users           -> shared
-  credentials     -> Section B owns writes, others may read
-  devices         -> Section A owns writes, others read
-  sessions        -> Section C owns writes; everyone else reads via lib/session_utils.py only
-  login_history   -> Section C owns the write function (log_login_attempt); A and B call it,
-                     never insert rows directly
-  otp_codes       -> Section B owns
+  users                   -> shared (A: locked_until, B: is_verified)
+  credentials             -> Section B owns writes, others may read
+  devices                 -> Section A owns writes, others read
+  sessions                -> Section C owns writes; everyone else reads via lib/session_utils.py only
+  login_history           -> Section C owns write function (log_login_attempt)
+  otp_codes               -> Section B owns
+  login_tokens            -> Section B owns (QR cross-device sync)
+  email_verification_codes-> Section B owns (Registration email confirmation)
+  recovery_codes          -> Section B owns (Emergency backup codes)
+  step_up_challenges      -> Section A owns (Transaction-bound step-up authentication)
 """
 
 import uuid
@@ -31,6 +33,8 @@ class User(Base):
     id = Column(String, primary_key=True, default=gen_uuid)
     email = Column(String, unique=True, nullable=False, index=True)
     name = Column(String, nullable=True)
+    is_verified = Column(Boolean, default=False)
+    locked_until = Column(DateTime, nullable=True)  # Section A lockout timestamp
     created_at = Column(DateTime, default=datetime.utcnow)
 
     credentials = relationship("Credential", back_populates="user", cascade="all, delete-orphan")
@@ -38,6 +42,8 @@ class User(Base):
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
     login_history = relationship("LoginHistory", back_populates="user")
     otp_codes = relationship("OTPCode", back_populates="user", cascade="all, delete-orphan")
+    recovery_codes = relationship("RecoveryCode", back_populates="user", cascade="all, delete-orphan")
+    verification_codes = relationship("EmailVerificationCode", back_populates="user", cascade="all, delete-orphan")
 
 
 class Credential(Base):
@@ -86,7 +92,7 @@ class LoginHistory(Base):
 
     id = Column(String, primary_key=True, default=gen_uuid)
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
-    method = Column(String, nullable=False)  # exactly one of: "webauthn" | "otp" | "qr"
+    method = Column(String, nullable=False)  # "webauthn" | "otp" | "qr" | "recovery_code"
     success = Column(Boolean, nullable=False)
     ip_address = Column(String, nullable=True)
     device_info = Column(String, nullable=True)
@@ -109,11 +115,7 @@ class OTPCode(Base):
 
 
 class LoginToken(Base):
-    """
-    QR cross-device login handoff — Section B owns.
-    NOT part of C's original schema draft — added by B, flagged to team since
-    this is a new table (CONTRACT.md: announce schema changes before pushing).
-    """
+    """QR cross-device login handoff — Section B owns."""
     __tablename__ = "login_tokens"
 
     id = Column(String, primary_key=True, default=gen_uuid)
@@ -122,3 +124,43 @@ class LoginToken(Base):
     status = Column(String, nullable=False, default="pending")  # pending | approved | expired | denied
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
+
+
+class EmailVerificationCode(Base):
+    """Email registration verification codes — Section B owns."""
+    __tablename__ = "email_verification_codes"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    code_hash = Column(String, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="verification_codes")
+
+
+class RecoveryCode(Base):
+    """Backup recovery codes table — Section B owns."""
+    __tablename__ = "recovery_codes"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    code_hash = Column(String, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    used_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", back_populates="recovery_codes")
+
+
+class StepUpChallenge(Base):
+    """Transaction-bound step-up challenge table — Section A owns."""
+    __tablename__ = "step_up_challenges"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    transaction_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)

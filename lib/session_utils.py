@@ -97,7 +97,12 @@ def get_current_user(request: Request) -> Optional[dict]:
         if not user:
             return None
 
-        return {"id": user.id, "email": user.email, "name": user.name}
+        return {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "is_verified": getattr(user, "is_verified", False),
+        }
     finally:
         db.close()
 
@@ -141,9 +146,9 @@ def log_login_attempt(
     ip_address: Optional[str],
     device_info: Optional[str],
 ) -> None:
-    """Writes one row to login_history. method must be one of the 3 fixed strings."""
-    if method not in ("webauthn", "otp", "qr"):
-        raise ValueError(f"Invalid login method '{method}'. Must be webauthn, otp, or qr.")
+    """Writes one row to login_history."""
+    if method not in ("webauthn", "otp", "qr", "recovery_code"):
+        raise ValueError(f"Invalid login method '{method}'. Must be webauthn, otp, qr, or recovery_code.")
 
     db = SessionLocal()
     try:
