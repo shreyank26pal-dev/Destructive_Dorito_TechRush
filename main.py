@@ -118,3 +118,59 @@ def co_signer_setup_page(invite_token: str, request: Request):
             "primary_user_name": primary_user_name,
         },
     )
+
+
+@app.get("/co-signer/approve/{request_id}", response_class=HTMLResponse)
+def co_signer_approve_page(request_id: str, request: Request):
+    """
+    The page a registered co-signer lands on from the "approval needed" email
+    (see create_approval_request in routers/co_signer.py). They review a pending
+    high-value/new-payee transaction and approve it with their passkey, or deny
+    it. The actual crypto happens via /api/security/co-signer/approve-* and /deny.
+
+    We resolve up-front context so the page can open directly in the right
+    state (pending vs. already-resolved vs. expired) without a flash of the
+    wrong UI. Transaction detail fields are optional — the model only stores a
+    transaction_hash, so the page gracefully shows a generic summary unless
+    richer details are wired in later.
+    """
+    import math
+    from datetime import datetime
+    from database import SessionLocal
+    from models import CoSignerApprovalRequest, User
+
+    ctx = {
+        "request": request,
+        "request_id": request_id,
+        "primary_user_name": "a family member",
+        "initial_status": "not_found",   # pending | approved | denied | expired | not_found
+        "minutes_remaining": 0,
+        # Optional transaction details — None means "show the generic summary".
+        "transaction_amount": None,
+        "transaction_recipient": None,
+    }
+
+    db = SessionLocal()
+    try:
+        req = (
+            db.query(CoSignerApprovalRequest)
+            .filter(CoSignerApprovalRequest.id == request_id)
+            .first()
+        )
+        if req:
+            primary = db.query(User).filter(User.id == req.primary_user_id).first()
+            if primary:
+                ctx["primary_user_name"] = primary.name or primary.email
+
+            now = datetime.utcnow()
+            if req.status == "pending" and req.expires_at <= now:
+                ctx["initial_status"] = "expired"
+            else:
+                ctx["initial_status"] = req.status
+                if req.status == "pending":
+                    remaining = (req.expires_at - now).total_seconds()
+                    ctx["minutes_remaining"] = max(1, math.ceil(remaining / 60))
+    finally:
+        db.close()
+
+    return templates.TemplateResponse("cosigner_approve.html", ctx)

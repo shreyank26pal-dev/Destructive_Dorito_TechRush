@@ -319,6 +319,30 @@ def co_signer_approve_verify(payload: CoSignerApproveVerifyRequest, db: DBSessio
     return success_response(message="Approved. The primary user's transaction may now proceed.")
 
 
+@router.post("/deny")
+def co_signer_deny(payload: CoSignerApproveOptionsRequest, db: DBSession = Depends(get_db)):
+    """
+    Co-signer explicitly declines a pending request. No passkey needed to say
+    "no" — declining is a safety action and should be as frictionless as
+    possible. The primary user's transaction can then never proceed on this
+    request (transaction-status reports fully_cleared=False forever for it).
+    """
+    req = db.query(CoSignerApprovalRequest).filter(CoSignerApprovalRequest.id == payload.request_id).first()
+    if not req:
+        return error_response("Approval request not found.")
+    if req.status != "pending":
+        return error_response(f"This request is already {req.status}.")
+    if req.expires_at < datetime.utcnow():
+        req.status = "expired"
+        db.commit()
+        return error_response("This approval request has expired.")
+
+    req.status = "denied"
+    req.resolved_at = datetime.utcnow()
+    db.commit()
+    return success_response(message="Declined. The transaction will not proceed.")
+
+
 @router.get("/approval-status/{request_id}")
 def co_signer_approval_status(request_id: str, db: DBSession = Depends(get_db)):
     """Polled by the primary user's frontend to know when their co-signer
