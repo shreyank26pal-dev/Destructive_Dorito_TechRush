@@ -740,7 +740,13 @@ async function fetchLoginHistory() {
 async function triggerWireTransferStepUp() {
   if (!currentUser) return;
 
-  const amount = 10000;
+  const amountInput = document.getElementById('transfer-amount-input');
+  const amount = amountInput ? parseFloat(amountInput.value) : 10000;
+  if (isNaN(amount) || amount <= 0) {
+    showToast('Invalid transfer amount.', 'error');
+    return;
+  }
+
   const recipient = "Global Reserve Vault #4810";
   const transaction = { action: "wire_transfer", amount: amount, recipient: recipient };
 
@@ -767,7 +773,7 @@ async function triggerWireTransferStepUp() {
 
   showToast(`Step-Up OTP code sent to ${currentUser.email}!`, 'info');
 
-  const code = prompt(`SECURE WIRE TRANSFER AUTHORIZATION\nTransfer: $10,000.00 to ${recipient}\n\nEnter the 6-digit OTP code sent to ${currentUser.email}:`);
+  const code = prompt(`SECURE WIRE TRANSFER AUTHORIZATION\nTransfer: $${amount.toLocaleString()} to ${recipient}\n\nEnter the 6-digit OTP code sent to ${currentUser.email}:`);
   if (!code) {
     showToast('Wire transfer cancelled.', 'warning');
     return;
@@ -781,7 +787,35 @@ async function triggerWireTransferStepUp() {
   });
 
   if (verifyRes.status === 'success') {
-    showToast('✅ WIRE TRANSFER AUTHORIZED SUCCESSFULLY! $10,000.00 transferred.', 'success');
+    if (challengeRes.data.co_signer_approval_required) {
+      showToast('Step-Up OTP verified. Awaiting Co-Signer approval (check their email)...', 'info');
+      
+      let polling = true;
+      let count = 0;
+      while (polling && count < 60) {
+        await new Promise(r => setTimeout(r, 2000));
+        const statusRes = await apiCall(`/api/security/co-signer/transaction-status/${challengeId}`);
+        if (statusRes.status === 'success' && statusRes.data) {
+          const d = statusRes.data;
+          if (d.fully_cleared) {
+            polling = false;
+            showToast(`✅ WIRE TRANSFER FULLY AUTHORIZED! Co-signer approved the transfer of $${amount.toLocaleString()}.`, 'success');
+          } else if (d.co_signer_status === 'denied') {
+            polling = false;
+            showToast('❌ WIRE TRANSFER REJECTED: Co-signer declined the transaction.', 'error');
+          } else if (d.co_signer_status === 'expired') {
+            polling = false;
+            showToast('❌ WIRE TRANSFER EXPIRED: Co-signer approval request expired.', 'error');
+          }
+        }
+        count++;
+      }
+      if (polling) {
+        showToast('❌ WIRE TRANSFER TIMEOUT: Co-signer did not respond.', 'error');
+      }
+    } else {
+      showToast(`✅ WIRE TRANSFER AUTHORIZED SUCCESSFULLY! $${amount.toLocaleString()} transferred.`, 'success');
+    }
   } else {
     showToast(verifyRes.message || 'Step-Up verification failed. Wire transfer rejected.', 'error');
   }

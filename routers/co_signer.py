@@ -99,11 +99,16 @@ def is_high_risk(transaction: dict) -> bool:
 def get_active_co_signer(db: DBSession, primary_user_id: str) -> CoSigner | None:
     """Used by routers/auth_entry.py when creating a step-up challenge, to
     decide whether a co-signer approval is also required."""
-    return (
+    co_signers = (
         db.query(CoSigner)
         .filter(CoSigner.primary_user_id == primary_user_id, CoSigner.registered == True)  # noqa: E712
-        .first()
+        .all()
     )
+    for cs in co_signers:
+        has_cred = db.query(CoSignerCredential).filter(CoSignerCredential.co_signer_id == cs.id).first()
+        if has_cred:
+            return cs
+    return None
 
 
 def create_approval_request(

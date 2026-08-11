@@ -47,9 +47,13 @@
         <p class="text-xs text-gray-400 mt-1">Account No: <span class="font-mono-code text-gray-300">•••• •••• 8842</span></p>
       </div>
 
-      <div class="flex items-center gap-2 w-full sm:w-auto">
-        <button onclick="triggerWireTransferStepUp()" class="w-full sm:w-auto px-4 py-2.5 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2 shadow">
-          <i class="fas fa-paper-plane"></i> Wire Transfer ($10,000)
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-3 sm:mt-0">
+        <div class="relative min-w-[120px]">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">$</span>
+          <input type="number" id="transfer-amount-input" value="15000" placeholder="15000" class="w-full pl-7 pr-3 py-2.5 bs-input text-xs font-mono-code focus:outline-none" />
+        </div>
+        <button onclick="triggerWireTransferStepUp()" class="px-4 py-2.5 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2 shadow">
+          <i class="fas fa-paper-plane"></i> Wire Transfer
         </button>
       </div>
     </div>
