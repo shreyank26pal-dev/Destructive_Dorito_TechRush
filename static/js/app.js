@@ -91,9 +91,16 @@ function showToast(message, type = 'info') {
 // ==========================================================================
 
 async function apiCall(url, method = 'GET', data = null) {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  const lang = navigator.language || "";
+
   const options = {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-Client-Timezone': timezone,
+      'X-Client-Language': lang
+    },
   };
   if (data) {
     options.body = JSON.stringify(data);

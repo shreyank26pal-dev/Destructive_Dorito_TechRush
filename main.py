@@ -17,6 +17,7 @@ from database import Base, engine
 from routers import security
 from routers.auth_entry import router as auth_entry_router
 from routers.sessions import router as sessions_router
+from routers.co_signer import router as co_signer_router
 from lib.rate_limit import limiter
 from schemas import error_response
 
@@ -54,6 +55,7 @@ templates = Jinja2Templates(directory="templates")
 app.include_router(security.router, prefix="/api/security", tags=["Section B — Security"])
 app.include_router(auth_entry_router, tags=["Section A — Entry Checks"])
 app.include_router(sessions_router, tags=["Section C — Sessions"])
+app.include_router(co_signer_router, tags=["Co-Signer (Round 2)"])
 
 
 @app.on_event("startup")

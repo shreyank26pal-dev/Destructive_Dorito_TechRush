@@ -136,3 +136,29 @@ class RecoveryCodeVerifyRequest(BaseModel):
     email: EmailStr
     code: str
     device_fingerprint: Optional[str] = None
+
+
+# --- Round 2: Co-signer (assisted authentication for high-risk actions) ---
+
+class CoSignerInviteRequest(BaseModel):
+    primary_user_id: str
+    label: Optional[str] = None
+    notify_email: EmailStr
+
+
+class CoSignerRegisterOptionsRequest(BaseModel):
+    invite_token: str
+
+
+class CoSignerRegisterVerifyRequest(BaseModel):
+    invite_token: str
+    credential: dict
+
+
+class CoSignerApproveOptionsRequest(BaseModel):
+    request_id: str
+
+
+class CoSignerApproveVerifyRequest(BaseModel):
+    request_id: str
+    credential: dict

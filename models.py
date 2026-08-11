@@ -2,7 +2,7 @@
 Shared SQLAlchemy models — reconciled version combining Section A, B, and C features.
 
 Ownership (who WRITES to each table — see CONTRACT.md section 3 comments):
-  users                   -> shared (A: locked_until, B: is_verified)
+  users                   -> shared (A: locked_until, B: is_verified, C: role)
   credentials             -> Section B owns writes, others may read
   devices                 -> Section A owns writes, others read
   sessions                -> Section C owns writes; everyone else reads via lib/session_utils.py only
@@ -12,6 +12,7 @@ Ownership (who WRITES to each table — see CONTRACT.md section 3 comments):
   email_verification_codes-> Section B owns (Registration email confirmation)
   recovery_codes          -> Section B owns (Emergency backup codes)
   step_up_challenges      -> Section A owns (Transaction-bound step-up authentication)
+  co_signers / co_signer_credentials / co_signer_approval_requests -> Round 2, delegated auth
 """
 
 import uuid
@@ -35,6 +36,9 @@ class User(Base):
     name = Column(String, nullable=True)
     is_verified = Column(Boolean, default=False)
     locked_until = Column(DateTime, nullable=True)  # Section A lockout timestamp
+    # Section C, item 1 -- "user" or "admin". Never settable through any API
+    # endpoint; only ever changed by direct SQL against the database.
+    role = Column(String, nullable=False, default="user")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     credentials = relationship("Credential", back_populates="user", cascade="all, delete-orphan")
@@ -175,3 +179,58 @@ class StepUpChallenge(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
+
+
+# --- Round 2: Assisted "Co-Signer" passkeys (delegated authentication) ---
+# For elderly/vulnerable users -- a linked family member's passkey, with no
+# login account of their own, used only to approve high-risk actions
+# (large transfers, new payees) on the primary user's behalf.
+
+class CoSigner(Base):
+    """A registered family member/co-signer for a primary user's account.
+    No email/password login of their own -- identified only by their
+    registered WebAuthn passkey. Owned by whoever builds this feature."""
+    __tablename__ = "co_signers"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    primary_user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    label = Column(String, nullable=True)  # e.g. "My daughter Priya"
+    notify_email = Column(String, nullable=False)
+    invite_token = Column(String, unique=True, nullable=True)  # cleared once used
+    invite_expires_at = Column(DateTime, nullable=True)
+    registered = Column(Boolean, default=False)  # True once passkey setup is complete
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    primary_user = relationship("User")
+    credentials = relationship("CoSignerCredential", back_populates="co_signer", cascade="all, delete-orphan")
+
+
+class CoSignerCredential(Base):
+    """The co-signer's registered WebAuthn passkey."""
+    __tablename__ = "co_signer_credentials"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    co_signer_id = Column(String, ForeignKey("co_signers.id"), nullable=False)
+    public_key = Column(LargeBinary, nullable=False)
+    webauthn_cred_id = Column(String, unique=True, nullable=False)
+    counter = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    co_signer = relationship("CoSigner", back_populates="credentials")
+
+
+class CoSignerApprovalRequest(Base):
+    """One pending/resolved approval request, bound to the same
+    transaction_hash as a StepUpChallenge. The transaction may only proceed
+    once BOTH the primary user's step-up (StepUpChallenge.used) AND this
+    request's status are satisfied."""
+    __tablename__ = "co_signer_approval_requests"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    primary_user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    co_signer_id = Column(String, ForeignKey("co_signers.id"), nullable=False)
+    transaction_hash = Column(String, nullable=False)
+    status = Column(String, default="pending")  # pending | approved | denied | expired
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    resolved_at = Column(DateTime, nullable=True)

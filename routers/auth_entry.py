@@ -164,12 +164,28 @@ def create_step_up_challenge(
     db.commit()
     db.refresh(challenge)
 
+    # Round 2 -- assisted authentication for high-risk actions. If this
+    # transaction is high-risk (large amount / new payee) AND the user has
+    # a registered co-signer, a second approval is required from them
+    # before the action may proceed, alongside the primary user's own
+    # step-up OTP. See routers/co_signer.py for the full flow.
+    co_signer_request_id = None
+    from routers.co_signer import is_high_risk, get_active_co_signer, create_approval_request
+
+    if is_high_risk(payload.transaction):
+        co_signer = get_active_co_signer(db, user.id)
+        if co_signer:
+            approval_req = create_approval_request(db, user.id, co_signer, transaction_hash)
+            co_signer_request_id = approval_req.id
+
     return APIResponse(
         status="success",
         data={
             "challenge_id": challenge.id,
             "transaction_hash": transaction_hash,
             "expires_at": challenge.expires_at.isoformat(),
+            "co_signer_approval_required": co_signer_request_id is not None,
+            "co_signer_request_id": co_signer_request_id,
         },
         message="Present this challenge_id with the step-up OTP to authorize this specific transaction.",
     )

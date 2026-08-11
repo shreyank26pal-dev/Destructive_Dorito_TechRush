@@ -152,16 +152,29 @@ def update_profile(
     )
 
 
-# --- Section C, item 1 -- admin audit log (round 2) ---
-#
-# SECURITY NOTE FOR THE TEAM: there is no admin-role concept anywhere in the
-# schema yet (no is_admin flag on User, no separate admin auth). This endpoint
-# currently only requires being logged in as ANY user -- it does NOT verify
-# the caller is actually an administrator. That's a real gap, not an
-# oversight: building real admin-role gating (a new column + checking it
-# here) needs a team decision on who "admin" even is for this project before
-# it can be implemented properly. Flagging this clearly rather than silently
-# shipping either an open endpoint or a fake permission check.
+# --- Section C, item 1 -- admin audit log (round 2, now role-gated) ---
+
+def _require_admin(request: Request, response: Response, db: DBSession):
+    """
+    Shared admin gate for every /admin/... route in this file. Returns the
+    admin User row on success, or None (with response.status_code already
+    set) on failure -- callers should `if not admin: return <that response>`.
+    """
+    user = get_current_user(request)
+    if not user:
+        _unauthorized(response)
+        return None
+
+    db_user = db.query(models.User).filter(models.User.id == user["id"]).first()
+    if not db_user or db_user.role != "admin":
+        response.status_code = 403
+        # Deliberately generic message -- don't reveal whether the account
+        # exists or just lacks the role, same principle as not distinguishing
+        # "wrong password" from "no such user" on a login form.
+        return None
+    return db_user
+
+
 @router.get("/admin/audit-log", response_model=APIResponse)
 def admin_audit_log(
     request: Request,
@@ -174,17 +187,10 @@ def admin_audit_log(
     the ip_address field entirely (item 1) -- even though it's already a
     hash, not a raw IP (item 3), there's no reason an admin view needs it,
     so it's left out rather than relying on "it's just a hash" as the only
-    protection.
+    protection. Requires role == "admin" (see _require_admin above).
     """
-    user = get_current_user(request)
-    if not user:
-        return _unauthorized(response)
-    # TODO(team): replace this with a real admin check once User has an
-    # is_admin column, e.g.:
-    #   db_user = db.query(models.User).filter(models.User.id == user["id"]).first()
-    #   if not db_user or not db_user.is_admin:
-    #       response.status_code = 403
-    #       return APIResponse(status="error", message="Admin access required")
+    if not _require_admin(request, response, db):
+        return APIResponse(status="error", message="Admin access required")
 
     rows = (
         db.query(models.LoginHistory)
@@ -202,6 +208,48 @@ def admin_audit_log(
             "city": r.city,
             "country": r.country,
             "device_info": r.device_info,
+            "created_at": r.created_at.isoformat(),
+        }
+        for r in rows
+    ]
+    return APIResponse(status="success", data=data)
+
+
+@router.get("/admin/sensitive-actions", response_model=APIResponse)
+def admin_sensitive_actions(
+    request: Request,
+    response: Response,
+    limit: int = 100,
+    db: DBSession = Depends(get_db),
+):
+    """
+    Admin-only view of step-up-authenticated ("sensitive") actions -- the
+    closest thing this system has to a transaction feed, since there's no
+    real transactions table (see round-2 discussion). Shows which users
+    triggered a step-up challenge, when, and whether it was actually
+    completed (used=True) or is still pending/expired.
+
+    transaction_hash is intentionally NOT exposed here -- it's an internal
+    binding value (see models.StepUpChallenge), not something an admin view
+    needs to display; showing it adds no information value and needlessly
+    exposes an internal implementation detail.
+    """
+    if not _require_admin(request, response, db):
+        return APIResponse(status="error", message="Admin access required")
+
+    rows = (
+        db.query(models.StepUpChallenge)
+        .order_by(desc(models.StepUpChallenge.created_at))
+        .limit(min(limit, 500))
+        .all()
+    )
+
+    data = [
+        {
+            "id": r.id,
+            "user_id": r.user_id,
+            "completed": r.used,
+            "expires_at": r.expires_at.isoformat(),
             "created_at": r.created_at.isoformat(),
         }
         for r in rows
