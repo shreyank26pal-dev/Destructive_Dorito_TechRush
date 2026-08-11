@@ -711,6 +711,16 @@ Binds a step-up OTP verification to a hash of one specific transaction's details
 
 Hashed codes for registration email confirmation and emergency account recovery.
 
+> [!IMPORTANT]
+> **Database Schema Migration Note (For Database Resets)**
+> If the Supabase PostgreSQL database is ever reset or re-created from scratch, execute the following SQL commands to ensure the `role` column and location columns exist:
+> ```sql
+> ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR NOT NULL DEFAULT 'user';
+> ALTER TABLE login_history ADD COLUMN IF NOT EXISTS city TEXT;
+> ALTER TABLE login_history ADD COLUMN IF NOT EXISTS country TEXT;
+> ```
+> *Note: On your shared team database, these schema updates only need to be run once.*
+
 ---
 
 ## Testing

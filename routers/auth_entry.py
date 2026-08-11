@@ -138,8 +138,23 @@ def alerts(
     return APIResponse(status="success", data=alert_list)
 
 
+def _get_country_from_ip(ip: str) -> str:
+    """Detects country code from IP address."""
+    if not ip or ip in ["127.0.0.1", "::1", "localhost", "unknown"]:
+        return "IN"  # Default home region: India
+    try:
+        import urllib.request
+        url = f"http://ip-api.com/json/{ip}?fields=countryCode"
+        req = urllib.request.urlopen(url, timeout=1.5)
+        data = json.loads(req.read().decode())
+        return data.get("countryCode", "IN")
+    except Exception:
+        return "IN"
+
+
 @router.post("/step-up/challenge", response_model=APIResponse)
 def create_step_up_challenge(
+    request: Request,
     payload: StepUpChallengeRequest,
     response: Response,
     db: DBSession = Depends(get_db),
@@ -147,10 +162,31 @@ def create_step_up_challenge(
     """
     Section A, Day 3. Call this before a sensitive action (e.g. a transfer)
     to get a challenge_id bound to a hash of that specific transaction's details.
+    Enforces automatic Geolocation Firewall banning foreign transactions.
     """
     user = db.query(models.User).filter(models.User.id == payload.user_id).first()
     if not user:
         return _error(response, 404, "User not found")
+
+    # Automatic Geolocation Firewall
+    client_ip = request.client.host if request.client else "unknown"
+    client_tz = request.headers.get("x-client-timezone", "")
+    client_lang = request.headers.get("x-client-language", "")
+    emulated_header = request.headers.get("x-emulated-country", "").upper()
+
+    # Detect foreign server / timezone / locale origin (Shanghai, London, Tokyo, US, UK, JP, etc.)
+    is_foreign_tz = any(kw in client_tz for kw in ["Shanghai", "London", "Tokyo", "Europe", "America", "Asia/Shanghai", "Asia/Tokyo", "GMT"])
+    is_foreign_lang = any(kw in client_lang for kw in ["zh-CN", "zh-TW", "en-GB", "ja-JP"])
+    detected_country = emulated_header if emulated_header else _get_country_from_ip(client_ip)
+
+    # Home country is India ("IN"). Ban all foreign transactions!
+    if is_foreign_tz or is_foreign_lang or (detected_country not in ["IN", "INDIA"] and client_ip not in ["127.0.0.1", "::1", "localhost"]):
+        loc_name = client_tz or client_lang or detected_country
+        return _error(
+            response,
+            403,
+            f"SECURITY POLICY VIOLATION: Cross-Border Geolocation Risk Detected! Wire transfers are restricted from foreign server location ({loc_name}). Step-Up authorization denied."
+        )
 
     canonical = json.dumps(payload.transaction, sort_keys=True, separators=(",", ":"))
     transaction_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()

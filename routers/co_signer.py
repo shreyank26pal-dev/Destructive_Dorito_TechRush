@@ -59,6 +59,7 @@ from schemas import (
 )
 from lib.session_utils import get_current_user
 from lib.email_utils import send_email
+from routers.security import _get_rp_id_and_origin
 
 router = APIRouter(prefix="/api/security/co-signer", tags=["co-signer"])
 
@@ -180,15 +181,21 @@ def invite_co_signer(payload: CoSignerInviteRequest, request: Request, db: DBSes
 # ===========================================================================
 
 @router.post("/register-options")
-def co_signer_register_options(payload: CoSignerRegisterOptionsRequest, db: DBSession = Depends(get_db)):
+def co_signer_register_options(
+    payload: CoSignerRegisterOptionsRequest,
+    request: Request,
+    db: DBSession = Depends(get_db),
+):
     co_signer = db.query(CoSigner).filter(CoSigner.invite_token == payload.invite_token).first()
     if not co_signer:
         return error_response("Invalid or already-used invite link.")
     if co_signer.invite_expires_at < datetime.utcnow():
         return error_response("This invite has expired. Ask the account holder to send a new one.")
 
+    rp_id, _ = _get_rp_id_and_origin(request)
+
     options = generate_registration_options(
-        rp_id=RP_ID,
+        rp_id=rp_id,
         rp_name=RP_NAME,
         user_id=co_signer.id.encode("utf-8"),
         user_name=co_signer.notify_email,
@@ -202,7 +209,11 @@ def co_signer_register_options(payload: CoSignerRegisterOptionsRequest, db: DBSe
 
 
 @router.post("/register-verify")
-def co_signer_register_verify(payload: CoSignerRegisterVerifyRequest, db: DBSession = Depends(get_db)):
+def co_signer_register_verify(
+    payload: CoSignerRegisterVerifyRequest,
+    request: Request,
+    db: DBSession = Depends(get_db),
+):
     co_signer = db.query(CoSigner).filter(CoSigner.invite_token == payload.invite_token).first()
     if not co_signer:
         return error_response("Invalid or already-used invite link.")
@@ -211,12 +222,14 @@ def co_signer_register_verify(payload: CoSignerRegisterVerifyRequest, db: DBSess
     if not expected_challenge:
         return error_response("No registration in progress for this invite. Start again.")
 
+    rp_id, origin = _get_rp_id_and_origin(request)
+
     try:
         verification = verify_registration_response(
             credential=payload.credential,
             expected_challenge=expected_challenge,
-            expected_rp_id=RP_ID,
-            expected_origin=ORIGIN,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
         )
     except Exception as e:
         return error_response(f"Passkey registration failed: {e}")
@@ -243,7 +256,11 @@ def co_signer_register_verify(payload: CoSignerRegisterVerifyRequest, db: DBSess
 # ===========================================================================
 
 @router.post("/approve-options")
-def co_signer_approve_options(payload: CoSignerApproveOptionsRequest, db: DBSession = Depends(get_db)):
+def co_signer_approve_options(
+    payload: CoSignerApproveOptionsRequest,
+    request: Request,
+    db: DBSession = Depends(get_db),
+):
     req = db.query(CoSignerApprovalRequest).filter(CoSignerApprovalRequest.id == payload.request_id).first()
     if not req:
         return error_response("Approval request not found.")
@@ -262,8 +279,10 @@ def co_signer_approve_options(payload: CoSignerApproveOptionsRequest, db: DBSess
     if not credentials:
         return error_response("No registered passkey found for this co-signer.")
 
+    rp_id, _ = _get_rp_id_and_origin(request)
+
     options = generate_authentication_options(
-        rp_id=RP_ID,
+        rp_id=rp_id,
         allow_credentials=[
             PublicKeyCredentialDescriptor(id=bytes.fromhex(c.webauthn_cred_id)) for c in credentials
         ],
@@ -274,7 +293,11 @@ def co_signer_approve_options(payload: CoSignerApproveOptionsRequest, db: DBSess
 
 
 @router.post("/approve-verify")
-def co_signer_approve_verify(payload: CoSignerApproveVerifyRequest, db: DBSession = Depends(get_db)):
+def co_signer_approve_verify(
+    payload: CoSignerApproveVerifyRequest,
+    request: Request,
+    db: DBSession = Depends(get_db),
+):
     req = db.query(CoSignerApprovalRequest).filter(CoSignerApprovalRequest.id == payload.request_id).first()
     if not req:
         return error_response("Approval request not found.")
@@ -298,12 +321,14 @@ def co_signer_approve_verify(payload: CoSignerApproveVerifyRequest, db: DBSessio
     if not stored_cred:
         return error_response("No registered passkey found for this co-signer.")
 
+    rp_id, origin = _get_rp_id_and_origin(request)
+
     try:
         verification = verify_authentication_response(
             credential=payload.credential,
             expected_challenge=expected_challenge,
-            expected_rp_id=RP_ID,
-            expected_origin=ORIGIN,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
             credential_public_key=stored_cred.public_key,
             credential_current_sign_count=stored_cred.counter,
         )
@@ -317,6 +342,31 @@ def co_signer_approve_verify(payload: CoSignerApproveVerifyRequest, db: DBSessio
 
     _pending_challenges.pop(f"approval:{req.id}", None)
     return success_response(message="Approved. The primary user's transaction may now proceed.")
+
+
+@router.post("/deny")
+def co_signer_deny(
+    payload: CoSignerApproveOptionsRequest,
+    db: DBSession = Depends(get_db),
+):
+    """
+    Declines the pending approval request. Setting the status to denied resolves
+    the request, but prevents the high-value transaction from executing.
+    """
+    req = db.query(CoSignerApprovalRequest).filter(CoSignerApprovalRequest.id == payload.request_id).first()
+    if not req:
+        return error_response("Approval request not found.")
+    if req.status != "pending":
+        return error_response(f"This request is already {req.status}.")
+    if req.expires_at < datetime.utcnow():
+        req.status = "expired"
+        db.commit()
+        return error_response("This approval request has expired.")
+
+    req.status = "denied"
+    req.resolved_at = datetime.utcnow()
+    db.commit()
+    return success_response(message="Decline noted. Transaction will not proceed.")
 
 
 @router.get("/approval-status/{request_id}")

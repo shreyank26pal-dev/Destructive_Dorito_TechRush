@@ -96,6 +96,7 @@ async function apiCall(url, method = 'GET', data = null) {
 
   const options = {
     method,
+    credentials: 'include', // Ensure mobile browsers (iOS Safari / Android Chrome) attach session cookies
     headers: { 
       'Content-Type': 'application/json',
       'X-Client-Timezone': timezone,
@@ -509,7 +510,8 @@ async function generateQrToken() {
   container.innerHTML = '<i class="fas fa-circle-notch fa-spin text-xl text-blue-500"></i>';
   if (statusText) statusText.innerText = 'Generating token...';
 
-  const res = await apiCall('/api/security/qr/generate', 'POST');
+  const fp = typeof computeDeviceFingerprint === 'function' ? computeDeviceFingerprint() : (window.deviceFingerprint || 'default_fp');
+  const res = await apiCall('/api/security/qr/generate', 'POST', { device_fingerprint: fp });
   if (res.status === 'success' && res.data) {
     const token = res.data.token;
     container.innerHTML = '';
@@ -517,7 +519,7 @@ async function generateQrToken() {
     // Render QR Code canvas
     if (window.QRCode) {
       new QRCode(container, {
-        text: `https://securebank.demo/qr-auth?token=${token}`,
+        text: token,
         width: 140,
         height: 140,
         colorDark: '#0d6efd',
@@ -528,10 +530,19 @@ async function generateQrToken() {
       container.innerText = token;
     }
 
-    if (statusText) statusText.innerText = 'Awaiting mobile scan approval...';
+    // Always display plain text token below QR code for easy mobile approval
+    const tokenTextEl = document.getElementById('qr-token-display') || document.createElement('div');
+    tokenTextEl.id = 'qr-token-display';
+    tokenTextEl.className = 'mt-2 p-2 rounded bg-gray-900 border border-gray-800 text-[11px] font-mono-code text-blue-400 break-all select-all';
+    tokenTextEl.innerText = token;
+    if (!document.getElementById('qr-token-display')) {
+      container.parentNode.appendChild(tokenTextEl);
+    }
+
+    if (statusText) statusText.innerText = 'Awaiting mobile approval...';
     startQrPolling(token);
   } else {
-    if (statusText) statusText.innerText = 'QR Token generation failed.';
+    if (statusText) statusText.innerText = res.message || 'QR Token generation failed.';
   }
 }
 
@@ -561,25 +572,70 @@ function startQrPolling(token) {
   }, 2000);
 }
 
-async function handleApproveQRModal() {
-  const token = prompt('Enter QR Token to simulate Mobile Approval (or leave blank to approve active token):');
-  const email = currentUser ? currentUser.email : prompt('Enter logged-in email address to approve QR:');
+function openQrApprovalModal() {
+  const modal = document.getElementById('qr-approve-modal');
+  if (modal) {
+    modal.classList.add('active');
+    modal.classList.remove('hidden');
+    if (currentUser && currentUser.email) {
+      const emailInput = document.getElementById('qr-approve-email');
+      if (emailInput) emailInput.value = currentUser.email;
+    }
+    const tokenInput = document.getElementById('qr-token-input') || document.getElementById('qr-approve-token');
+    if (tokenInput) {
+      tokenInput.value = '';
+      setTimeout(() => tokenInput.focus(), 100);
+    }
+  }
+}
 
-  if (!email) {
-    showToast('Logged-in email is required to approve QR.', 'error');
+function closeQrApprovalModal() {
+  const modal = document.getElementById('qr-approve-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.classList.add('hidden');
+  }
+}
+
+async function submitQrApproval() {
+  const input = document.getElementById('qr-token-input') || document.getElementById('qr-approve-token');
+  const emailInput = document.getElementById('qr-approve-email');
+  const token = input ? input.value.trim() : '';
+  const email = (currentUser && currentUser.email) ? currentUser.email : (emailInput ? emailInput.value.trim() : '');
+
+  if (!token) {
+    showToast('Please enter a QR Token.', 'warning');
     return;
   }
 
-  const targetToken = token || prompt('Paste the QR token from the login box:');
-  if (!targetToken) return;
+  if (!email) {
+    showToast('You must be logged in to approve a QR sign-in.', 'error');
+    return;
+  }
 
-  const res = await apiCall('/api/security/qr/approve', 'POST', { email, token: targetToken });
+  showToast('Approving QR sign-in...', 'info');
+  const res = await apiCall('/api/security/qr/approve', 'POST', { 
+    email: email, 
+    token: token 
+  });
+
   if (res.status === 'success') {
-    showToast('QR Token approved successfully!', 'success');
+    showToast('✅ QR Sign-in approved successfully!', 'success');
+    closeQrApprovalModal();
   } else {
     showToast(res.message || 'QR Approval failed.', 'error');
   }
 }
+
+async function handleApproveQRModal() {
+  openQrApprovalModal();
+}
+
+// Expose handlers globally on window object for mobile touch events
+window.openQrApprovalModal = openQrApprovalModal;
+window.closeQrApprovalModal = closeQrApprovalModal;
+window.submitQrApproval = submitQrApproval;
+window.handleApproveQRModal = handleApproveQRModal;
 
 // ==========================================================================
 // 9. DASHBOARD LOGIC, WIRE TRANSFER STEP-UP & AUDIT LOGS
@@ -618,37 +674,38 @@ async function fetchSecurityAlerts(userId) {
           <i class="fas fa-shield-check text-lg text-blue-400"></i>
           <div>
             <p class="font-bold text-white">Hardware & Account Integrity Nominal</p>
-            <p class="text-[11px] text-gray-400 mt-0.5">All connected hardware fingerprints and login attempts pass Dorito Vault security policies.</p>
+            <p class="text-xs text-gray-400 mt-0.5">Zero security alerts or untrusted device anomalies detected.</p>
           </div>
         </div>
       `;
-    } else {
-      container.innerHTML = alerts.map(a => {
-        if (a.type === 'untrusted_device') {
-          return `
-            <div class="flex items-start gap-3 p-3.5 rounded bg-yellow-900/30 border border-yellow-700/40 text-yellow-300 text-xs">
-              <i class="fas fa-triangle-exclamation text-yellow-400 text-base mt-0.5"></i>
-              <div>
-                <p class="font-bold text-white">Untrusted Hardware Fingerprint Detected</p>
-                <p class="text-xs text-yellow-200/80 mt-1">Fingerprint: <code class="font-mono-code bg-black/40 px-2 py-0.5 rounded text-yellow-300">${a.fingerprint}</code></p>
-                <p class="text-[11px] text-yellow-200/60 mt-0.5">First active: ${new Date(a.first_seen_at).toLocaleString()}</p>
-              </div>
-            </div>
-          `;
-        } else if (a.type === 'repeated_failed_logins') {
-          return `
-            <div class="flex items-start gap-3 p-3.5 rounded bg-red-900/30 border border-red-700/40 text-red-300 text-xs">
-              <i class="fas fa-shield-exclamation text-red-400 text-base mt-0.5"></i>
-              <div>
-                <p class="font-bold text-white">Security Alert: ${a.count} Repeated Failed Login Attempts</p>
-                <p class="text-xs text-red-200/80 mt-1">Multiple authentication failures detected in the last ${a.window_minutes} minutes.</p>
-              </div>
-            </div>
-          `;
-        }
-        return '';
-      }).join('');
+      return;
     }
+
+    container.innerHTML = alerts.map(a => {
+      if (a.type === 'untrusted_device') {
+        return `
+          <div class="flex items-start gap-3 p-3.5 rounded bg-yellow-900/30 border border-yellow-700/40 text-yellow-300 text-xs">
+            <i class="fas fa-triangle-exclamation text-yellow-400 text-base mt-0.5"></i>
+            <div>
+              <p class="font-bold text-white">Untrusted Hardware Fingerprint Detected</p>
+              <p class="text-xs text-yellow-200/80 mt-1">Fingerprint: <code class="font-mono-code bg-black/40 px-2 py-0.5 rounded text-yellow-300">${a.fingerprint}</code></p>
+              <p class="text-[11px] text-yellow-200/60 mt-0.5">First active: ${new Date(a.first_seen_at).toLocaleString()}</p>
+            </div>
+          </div>
+        `;
+      } else if (a.type === 'repeated_failed_logins') {
+        return `
+          <div class="flex items-start gap-3 p-3.5 rounded bg-red-900/30 border border-red-700/40 text-red-300 text-xs">
+            <i class="fas fa-shield-exclamation text-red-400 text-base mt-0.5"></i>
+            <div>
+              <p class="font-bold text-white">Security Alert: ${a.count} Repeated Failed Login Attempts</p>
+              <p class="text-xs text-red-200/80 mt-1">Multiple authentication failures detected in the last ${a.window_minutes} minutes.</p>
+            </div>
+          </div>
+        `;
+      }
+      return '';
+    }).join('');
   }
 }
 
@@ -656,7 +713,7 @@ async function fetchLoginHistory() {
   const tbody = document.getElementById('history-tbody');
   if (!tbody) return;
 
-  const res = await apiCall('/api/sessions/history');
+  const res = await apiCall('/api/sessions/login-history');
   if (res.status === 'success' && res.data) {
     const history = res.data;
     if (history.length === 0) {
@@ -672,8 +729,8 @@ async function fetchLoginHistory() {
         <td class="py-2.5 px-3 font-semibold ${h.success ? 'text-emerald-400' : 'text-red-400'}">
           ${h.success ? '✓ SUCCESS' : '✗ FAILED'}
         </td>
-        <td class="py-2.5 px-3 text-gray-300">${h.ip_address || '127.0.0.1'}</td>
-        <td class="py-2.5 px-3 text-gray-400">${h.device_fingerprint ? h.device_fingerprint.substring(0, 14) + '...' : 'n/a'}</td>
+        <td class="py-2.5 px-3 text-gray-300">📍 ${h.city || 'Local'}, ${h.country || 'India'}</td>
+        <td class="py-2.5 px-3 text-gray-400">${h.device_info ? h.device_info.substring(0, 16) + '...' : 'n/a'}</td>
         <td class="py-2.5 px-3 text-gray-400">${new Date(h.created_at).toLocaleString()}</td>
       </tr>
     `).join('');
@@ -730,6 +787,34 @@ async function triggerWireTransferStepUp() {
   }
 }
 
+async function handleCoSignerInvite(event) {
+  event.preventDefault();
+  if (!currentUser) return;
+  const email = document.getElementById('cosigner-email-input').value.trim();
+  const label = document.getElementById('cosigner-label-input').value.trim();
+
+  if (!email || !label) {
+    showToast('Please enter both email and label.', 'error');
+    return;
+  }
+
+  showToast('Sending co-signer invitation...', 'info');
+  const res = await apiCall('/api/security/co-signer/invite', 'POST', {
+    primary_user_id: currentUser.id,
+    notify_email: email,
+    label: label
+  });
+
+  if (res.status === 'success') {
+    showToast('Co-signer invitation sent!', 'success');
+    document.getElementById('cosigner-email-input').value = '';
+    document.getElementById('cosigner-label-input').value = '';
+  } else {
+    showToast(res.message || 'Failed to invite co-signer.', 'error');
+  }
+}
+window.handleCoSignerInvite = handleCoSignerInvite;
+
 async function handleDashboardRegisterPasskey() {
   if (!currentUser || !currentUser.email) return;
   await registerWebAuthn(currentUser.email);
@@ -740,7 +825,7 @@ async function handleUpdateProfile(event) {
   const name = document.getElementById('profile-name-input').value.trim();
   if (!name) return;
 
-  const res = await apiCall('/api/sessions/profile', 'PUT', { name });
+  const res = await apiCall('/api/sessions/profile/update', 'POST', { name });
   if (res.status === 'success') {
     showToast('Profile updated successfully!', 'success');
     currentUser.name = name;

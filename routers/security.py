@@ -57,6 +57,7 @@ from schemas import (
 from lib.session_utils import create_session, log_login_attempt, get_current_user
 from lib.email_utils import send_email
 from lib.lockout_utils import is_locked, check_and_lock_if_needed, clear_lock
+from lib.rate_limit import limiter
 
 router = APIRouter()
 
@@ -251,7 +252,8 @@ def webauthn_login_verify(payload: WebAuthnLoginVerifyRequest, response: Respons
 # ===========================================================================
 
 @router.post("/otp/send")
-def send_otp(payload: OtpSendRequest, db: DBSession = Depends(get_db)):
+@limiter.limit("5/minute")
+def send_otp(request: Request, payload: OtpSendRequest, db: DBSession = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
         return error_response("No account found for this email.")
@@ -334,7 +336,7 @@ def qr_generate(payload: QrGenerateRequest, db: DBSession = Depends(get_db)):
 
 
 @router.get("/qr/status/{token}")
-def qr_status(token: str, db: DBSession = Depends(get_db)):
+def qr_status(token: str, response: Response, db: DBSession = Depends(get_db)):
     token_row = db.query(LoginToken).filter(LoginToken.token == token).first()
     if not token_row:
         return error_response("Invalid token.")
@@ -347,6 +349,8 @@ def qr_status(token: str, db: DBSession = Depends(get_db)):
     if token_row.status == "approved" and token_row.user_id:
         user = db.query(User).filter(User.id == token_row.user_id).first()
         if user:
+            # Issue session cookie to the polling client upon QR approval
+            create_session(user_id=user.id, device_id=None, response=response)
             data["user"] = {"id": user.id, "email": user.email, "name": user.name}
 
     return success_response(data=data)
@@ -448,7 +452,8 @@ def step_up_verify(payload: StepUpVerifyRequest, request: Request, db: DBSession
 # ===========================================================================
 
 @router.post("/email/send-verification")
-def email_send_verification(payload: EmailVerificationSendRequest, db: DBSession = Depends(get_db)):
+@limiter.limit("5/minute")
+def email_send_verification(request: Request, payload: EmailVerificationSendRequest, db: DBSession = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
     if user and user.is_verified:
         return error_response("An account with this email already exists and is verified. Please sign in.")
@@ -474,7 +479,7 @@ def email_send_verification(payload: EmailVerificationSendRequest, db: DBSession
     send_email(
         to=user.email,
         subject="Verify your Dorito Vault Registration",
-        body=f"Your registration verification code is: <strong>{raw_code}</strong>. It expires in 15 minutes."
+        html=f"Your registration verification code is: <strong>{raw_code}</strong>. It expires in 15 minutes."
     )
 
     return success_response(message=f"Verification code sent to {user.email}.")
@@ -592,41 +597,4 @@ def recovery_codes_verify(payload: RecoveryCodeVerifyRequest, response: Response
     return success_response(
         data={"user": {"id": user.id, "email": user.email, "name": user.name}},
         message="Successfully authenticated using backup recovery code."
-    )
-
-
-# ===========================================================================
-# MULTI-DEVICE NUDGE ENDPOINT — Person B Task
-# ===========================================================================
-
-@router.get("/devices/nudge/{identifier}")
-def devices_nudge(identifier: str, db: DBSession = Depends(get_db)):
-    user = (
-        db.query(User)
-        .filter((User.email == identifier) | (User.id == identifier))
-        .first()
-    )
-    if not user:
-        return error_response("User not found.")
-
-    cred_count = len(user.credentials)
-    device_count = len(user.devices)
-    nudge_recommended = cred_count < 2
-
-    message = (
-        "Only 1 passkey registered. We recommend adding a secondary device or generating backup recovery codes."
-        if nudge_recommended
-        else "Multi-device setup healthy."
-    )
-
-    return success_response(
-        data={
-            "user_id": user.id,
-            "email": user.email,
-            "credential_count": cred_count,
-            "device_count": device_count,
-            "has_passkey": cred_count > 0,
-            "nudge_recommended": nudge_recommended,
-            "message": message,
-        }
     )
