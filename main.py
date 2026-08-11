@@ -82,3 +82,39 @@ def health():
 def security_test_page(request: Request):
     """Section B's manual test console for WebAuthn/OTP/QR flows."""
     return templates.TemplateResponse("security_test.html", {"request": request})
+
+
+@app.get("/co-signer/setup/{invite_token}", response_class=HTMLResponse)
+def co_signer_setup_page(invite_token: str, request: Request):
+    """
+    The single page a trusted family member sees after clicking the one-time
+    setup link emailed to them (see routers/co_signer.py invite flow). They have
+    no login of their own — this page registers their approval passkey via the
+    /api/security/co-signer/register-* endpoints.
+
+    We resolve the primary user's name for a warm, personalized header. If the
+    token is unknown/expired we still render the page (default name) and let the
+    client-side flow surface the friendly "expired link" state on register-options.
+    """
+    from database import SessionLocal
+    from models import CoSigner, User
+
+    primary_user_name = "your family member"
+    db = SessionLocal()
+    try:
+        co_signer = db.query(CoSigner).filter(CoSigner.invite_token == invite_token).first()
+        if co_signer:
+            primary = db.query(User).filter(User.id == co_signer.primary_user_id).first()
+            if primary:
+                primary_user_name = primary.name or primary.email
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        "cosigner_setup.html",
+        {
+            "request": request,
+            "invite_token": invite_token,
+            "primary_user_name": primary_user_name,
+        },
+    )
