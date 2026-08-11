@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" class="dark" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <title>Co-Signer Setup — Dorito Vault</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'] },
+          colors: {
+            gray: {
+              50: '#eef1f8', 100: '#dce2ef', 200: '#b6c0d9', 300: '#8b97b8', 400: '#626f92',
+              500: '#455070', 600: '#2e3650', 700: '#222a41', 800: '#171d30', 900: '#101627', 950: '#0a0e1a',
+            },
+            blue: {
+              50: '#eef0ff', 100: '#e0e2ff', 200: '#c7c9ff', 300: '#a5a4fb', 400: '#8b86f7',
+              500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+
+  <style>
+    /* Larger, calmer type scale for a less tech-savvy audience */
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .step-fade { opacity: 0; transform: translateY(10px); animation: stepIn 0.5s ease forwards; }
+    @keyframes stepIn { to { opacity: 1; transform: translateY(0); } }
+    .success-pop { animation: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .pulse-ring::after {
+      content: ""; position: absolute; inset: 0; border-radius: inherit;
+      border: 2px solid rgba(79, 70, 229, 0.5); animation: ring 2s ease-out infinite;
+    }
+    @keyframes ring { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.35); opacity: 0; } }
+    .btn-hero { transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease; }
+    .btn-hero:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 34px -12px rgba(79, 70, 229, 0.85); }
+    .btn-hero:active { transform: translateY(0); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center px-4 py-10 selection:bg-blue-600 selection:text-white">
+
+  <!-- Brand -->
+  <div class="flex items-center gap-3 mb-8">
+    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg">
+      <i class="fas fa-shield-cat text-lg"></i>
+    </div>
+    <div>
+      <div class="text-lg font-bold text-white tracking-tight leading-none">Dorito Vault</div>
+      <div class="text-[11px] text-blue-400 uppercase tracking-wider mt-1">Trusted Co-Signer</div>
+    </div>
+  </div>
+
+  <main class="w-full max-w-lg">
+
+    <!-- =================== STATE: INTRO / SETUP =================== -->
+    <section id="state-intro" class="bs-card p-8 sm:p-10 rounded-2xl">
+      <!-- Reassuring header -->
+      <div class="flex flex-col items-center text-center">
+        <div class="relative w-16 h-16 rounded-2xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-5">
+          <i class="fas fa-people-roof text-2xl"></i>
+        </div>
+        <h1 class="text-2xl sm:text-[28px] font-bold text-white leading-snug text-balance">
+          You've been added as a trusted co-signer for
+          <span class="text-blue-400">{{ primary_user_name }}</span>'s account
+        </h1>
+        <p class="text-[15px] text-gray-300 leading-relaxed mt-4 max-w-md text-pretty">
+          As a co-signer, you help keep their money safe by approving large or unusual
+          transactions. You won't have access to their account, balances, or details —
+          you'll simply be asked to give a quick approval when it matters most.
+        </p>
+      </div>
+
+      <!-- Primary action -->
+      <div class="mt-8">
+        <button id="btn-setup"
+          class="btn-hero w-full py-4 rounded-xl btn-bs-primary text-base font-bold flex items-center justify-center gap-3">
+          <i class="fas fa-fingerprint text-lg"></i>
+          <span id="btn-setup-label">Set Up Your Approval Passkey</span>
+        </button>
+        <p class="text-center text-xs text-gray-400 mt-3">
+          <i class="fas fa-lock text-gray-500"></i>
+          Uses your device's fingerprint, face, or PIN — nothing to remember.
+        </p>
+      </div>
+
+      <!-- 3-step explainer -->
+      <div class="mt-9 pt-8 border-t border-gray-800">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 text-center mb-6">How this works</p>
+        <ol class="space-y-5">
+          <li class="flex items-start gap-4 step-fade" style="animation-delay: 0.05s">
+            <div class="shrink-0 w-11 h-11 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center text-blue-400">
+              <i class="fas fa-mobile-screen-button"></i>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white">Register your device</div>
+              <div class="text-[13px] text-gray-400 leading-relaxed">A one-time setup on this phone or computer — takes just a few seconds.</div>
+            </div>
+          </li>
+          <li class="flex items-start gap-4 step-fade" style="animation-delay: 0.15s">
+            <div class="shrink-0 w-11 h-11 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center text-blue-400">
+              <i class="fas fa-sack-dollar"></i>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white">We'll only ask for approval on large transactions</div>
+              <div class="text-[13px] text-gray-400 leading-relaxed">Everyday activity never involves you — only high-value or unusual payments.</div>
+            </div>
+          </li>
+          <li class="flex items-start gap-4 step-fade" style="animation-delay: 0.25s">
+            <div class="shrink-0 w-11 h-11 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center text-blue-400">
+              <i class="fas fa-envelope-open-text"></i>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white">You'll get an email each time approval is needed</div>
+              <div class="text-[13px] text-gray-400 leading-relaxed">Just open the email and approve with your device — that's all.</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- =================== STATE: SUCCESS =================== -->
+    <section id="state-success" class="bs-card p-8 sm:p-10 rounded-2xl text-center hidden">
+      <div class="relative w-20 h-20 mx-auto mb-6">
+        <div class="pulse-ring absolute inset-0 rounded-full"></div>
+        <div class="success-pop w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+          <i class="fas fa-check text-3xl"></i>
+        </div>
+      </div>
+      <h1 class="text-2xl font-bold text-white">You're all set</h1>
+      <p class="text-[15px] text-gray-300 leading-relaxed mt-4 max-w-md mx-auto text-pretty">
+        Your approval passkey is registered. From now on, if
+        <span class="text-white font-medium">{{ primary_user_name }}</span> makes a large
+        transaction, you'll receive an email asking for a quick approval.
+      </p>
+      <div class="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300">
+        <i class="fas fa-circle-info text-blue-400"></i>
+        You can safely close this tab now.
+      </div>
+    </section>
+
+    <!-- =================== STATE: ERROR / EXPIRED =================== -->
+    <section id="state-error" class="bs-card p-8 sm:p-10 rounded-2xl text-center hidden">
+      <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400">
+        <i class="fas fa-hourglass-end text-2xl"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-white">This link has expired</h1>
+      <p id="error-message" class="text-[15px] text-gray-300 leading-relaxed mt-4 max-w-md mx-auto text-pretty">
+        For your security, co-signer setup links can only be used for a short time.
+        Please ask <span class="text-white font-medium">{{ primary_user_name }}</span> to
+        send you a new invitation from their account.
+      </p>
+      <div class="mt-6 text-left bg-gray-800/60 border border-gray-700 rounded-xl p-5 max-w-md mx-auto">
+        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">How to get a new invite</p>
+        <ol class="space-y-2 text-[13px] text-gray-300">
+          <li class="flex gap-2"><span class="text-blue-400 font-semibold">1.</span> Let {{ primary_user_name }} know the link stopped working.</li>
+          <li class="flex gap-2"><span class="text-blue-400 font-semibold">2.</span> They can re-send your co-signer invite from their account settings.</li>
+          <li class="flex gap-2"><span class="text-blue-400 font-semibold">3.</span> Open the new email and set up your passkey within 24 hours.</li>
+        </ol>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="mt-10 text-center text-xs text-gray-400">
+    <span class="inline-flex items-center gap-1.5">
+      <i class="fas fa-lock text-gray-500"></i>
+      Protected by Dorito Vault passwordless security
+    </span>
+  </footer>
+
+  <div id="toast-container"></div>
+
+  <script>
+    // Jinja-provided values (safe defaults so the page renders standalone too)
+    const INVITE_TOKEN = "{{ invite_token }}";
+    const API_BASE = "/api/security/co-signer";
+
+    // ---- base64url <-> ArrayBuffer helpers (WebAuthn wire format) ----
+    function b64urlToBuf(b64url) {
+      const pad = "=".repeat((4 - (b64url.length % 4)) % 4);
+      const b64 = (b64url + pad).replace(/-/g, "+").replace(/_/g, "/");
+      const raw = atob(b64);
+      const buf = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+      return buf.buffer;
+    }
+    function bufToB64url(buf) {
+      const bytes = new Uint8Array(buf);
+      let str = "";
+      for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+      return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+
+    function showState(id) {
+      ["state-intro", "state-success", "state-error"].forEach((s) => {
+        document.getElementById(s).classList.toggle("hidden", s !== id);
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showExpired(message) {
+      if (message) document.getElementById("error-message").textContent = message;
+      showState("state-error");
+    }
+
+    function toast(message, type) {
+      const c = document.getElementById("toast-container");
+      const el = document.createElement("div");
+      el.className = "toast toast-" + (type || "info");
+      el.textContent = message;
+      c.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    const btn = document.getElementById("btn-setup");
+    const btnLabel = document.getElementById("btn-setup-label");
+
+    function setBusy(busy) {
+      btn.disabled = busy;
+      btn.style.opacity = busy ? "0.7" : "1";
+      btn.style.cursor = busy ? "wait" : "pointer";
+      btnLabel.textContent = busy ? "Setting up your device…" : "Set Up Your Approval Passkey";
+    }
+
+    async function setupPasskey() {
+      if (!window.PublicKeyCredential || !navigator.credentials) {
+        toast("This device or browser doesn't support passkeys. Try a phone with fingerprint or face unlock.", "error");
+        return;
+      }
+
+      setBusy(true);
+      try {
+        // 1) Ask the server for registration options
+        const optRes = await fetch(API_BASE + "/register-options", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invite_token: INVITE_TOKEN }),
+        });
+        const optData = await optRes.json();
+
+        if (optData.status !== "success") {
+          const msg = (optData.message || "").toLowerCase();
+          if (msg.includes("expired") || msg.includes("invalid") || msg.includes("used")) {
+            showExpired(optData.message);
+          } else {
+            toast(optData.message || "Could not start setup. Please try again.", "error");
+            setBusy(false);
+          }
+          return;
+        }
+
+        // options is a JSON string from the server (py_webauthn options_to_json)
+        const options = typeof optData.data.options === "string"
+          ? JSON.parse(optData.data.options)
+          : optData.data.options;
+
+        // 2) Convert the encoded fields into the binary format the browser needs
+        const publicKey = {
+          ...options,
+          challenge: b64urlToBuf(options.challenge),
+          user: { ...options.user, id: b64urlToBuf(options.user.id) },
+        };
+        if (Array.isArray(options.excludeCredentials)) {
+          publicKey.excludeCredentials = options.excludeCredentials.map((c) => ({
+            ...c,
+            id: b64urlToBuf(c.id),
+          }));
+        }
+
+        // 3) Trigger the device's biometric / PIN prompt
+        const credential = await navigator.credentials.create({ publicKey });
+
+        // 4) Serialize the result back to the base64url wire format
+        const payloadCredential = {
+          id: credential.id,
+          rawId: bufToB64url(credential.rawId),
+          type: credential.type,
+          clientExtensionResults: credential.getClientExtensionResults?.() || {},
+          response: {
+            clientDataJSON: bufToB64url(credential.response.clientDataJSON),
+            attestationObject: bufToB64url(credential.response.attestationObject),
+          },
+        };
+
+        // 5) Verify with the server
+        const verRes = await fetch(API_BASE + "/register-verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invite_token: INVITE_TOKEN, credential: payloadCredential }),
+        });
+        const verData = await verRes.json();
+
+        if (verData.status === "success") {
+          showState("state-success");
+        } else {
+          toast(verData.message || "Setup could not be completed. Please try again.", "error");
+          setBusy(false);
+        }
+      } catch (err) {
+        // User cancelled the prompt, or the authenticator failed
+        if (err && (err.name === "NotAllowedError" || err.name === "AbortError")) {
+          toast("Setup was cancelled. Tap the button again when you're ready.", "info");
+        } else {
+          toast("Something went wrong setting up your passkey. Please try again.", "error");
+        }
+        setBusy(false);
+      }
+    }
+
+    btn.addEventListener("click", setupPasskey);
+
+    // If the invite token is obviously missing, show the expired/error state up front.
+    if (!INVITE_TOKEN || INVITE_TOKEN.trim() === "") {
+      showExpired("This setup link is incomplete or has already been used. Please ask your family member to send a new invitation.");
+    }
+  </script>
+</body>
+</html>

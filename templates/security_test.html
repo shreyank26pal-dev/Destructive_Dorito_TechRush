@@ -1,78 +1,191 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <title>Section B Test Page — WebAuthn + OTP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <title>Security Test Console — Dorito Vault</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          colors: {
+            gray: {
+              50: '#eef1f8', 100: '#dce2ef', 200: '#b6c0d9', 300: '#8b97b8', 400: '#626f92',
+              500: '#455070', 600: '#2e3650', 700: '#222a41', 800: '#171d30', 900: '#101627', 950: '#0a0e1a',
+            },
+            blue: {
+              50: '#eef0ff', 100: '#e0e2ff', 200: '#c7c9ff', 300: '#a5a4fb', 400: '#8b86f7',
+              500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
 </head>
-<body class="bg-gray-100 p-8 font-sans">
-  <div class="max-w-md mx-auto bg-white rounded-lg shadow p-6 space-y-6">
-    <h1 class="text-xl font-bold">Section B Test Console</h1>
-    <p class="text-sm text-gray-500">
-      For local testing only — this bypasses Section A's registration UI.
-      Create a test user directly in the DB or via /docs before using this page.
-    </p>
+<body class="min-h-screen font-sans text-gray-200 antialiased">
 
-    <div class="space-y-2">
-      <label class="block text-sm font-medium">Email</label>
-      <input id="email" type="email" class="w-full border rounded p-2" placeholder="test@example.com" />
+  <!-- Console Header -->
+  <header class="border-b border-gray-800 bg-gray-900/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm">
+          <i class="fas fa-flask-vial text-sm"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-base font-bold text-white tracking-tight">Security Test Console</span>
+            <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[10px] font-bold font-mono-code border border-amber-500/30">QA / DEV</span>
+          </div>
+          <p class="text-[11px] text-gray-400">WebAuthn · OTP · QR · Step-Up harness</p>
+        </div>
+      </a>
+      <a href="/" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold transition-all">
+        <i class="fas fa-arrow-left text-blue-400"></i> Back to App
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- Notice + Shared Account Identity -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+      <div class="lg:col-span-2 bs-card p-5 rounded-xl border-amber-500/30">
+        <div class="flex items-start gap-3">
+          <span class="p-2 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 flex-shrink-0">
+            <i class="fas fa-triangle-exclamation"></i>
+          </span>
+          <div>
+            <h1 class="text-base font-bold text-white">Local Testing Harness</h1>
+            <p class="text-xs text-gray-400 mt-1">
+              For local testing only — this bypasses the production onboarding UI.
+              Create a test user directly in the DB or via <span class="font-mono-code text-blue-300">/docs</span> before using this page.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shared Email Identity -->
+      <div class="bs-card p-5 rounded-xl">
+        <label for="email" class="block text-[11px] font-bold text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fas fa-at text-blue-400"></i> Test Account Email
+        </label>
+        <input id="email" type="email" placeholder="test@example.com"
+          class="w-full bs-input text-xs font-mono-code focus:outline-none" />
+        <p class="text-[10px] text-gray-500 mt-2">Used by every section below.</p>
+      </div>
     </div>
 
-    <hr />
+    <!-- Test Section Grid + Output -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-    <div class="space-y-2">
-      <h2 class="font-semibold">Biometric (WebAuthn)</h2>
-      <button onclick="registerBiometric()" class="bg-blue-600 text-white px-4 py-2 rounded w-full">
-        Register Biometric
-      </button>
-      <button onclick="loginBiometric()" class="bg-green-600 text-white px-4 py-2 rounded w-full">
-        Login with Biometric
-      </button>
+      <!-- Left column: test sections -->
+      <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+        <!-- WebAuthn -->
+        <section class="bs-card p-5 rounded-xl space-y-3">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="p-1.5 rounded bg-blue-500/15 text-blue-400 text-xs"><i class="fas fa-fingerprint"></i></span>
+            Biometric (WebAuthn)
+          </h2>
+          <button onclick="registerBiometric()" class="w-full py-2.5 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2">
+            <i class="fas fa-user-plus"></i> Register Biometric
+          </button>
+          <button onclick="loginBiometric()" class="w-full py-2.5 rounded btn-bs-success text-xs font-bold flex items-center justify-center gap-2">
+            <i class="fas fa-right-to-bracket"></i> Login with Biometric
+          </button>
+        </section>
+
+        <!-- OTP -->
+        <section class="bs-card p-5 rounded-xl space-y-3">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="p-1.5 rounded bg-emerald-500/15 text-emerald-400 text-xs"><i class="fas fa-envelope-open-text"></i></span>
+            Email OTP
+          </h2>
+          <button onclick="sendOtp()" class="w-full py-2.5 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2">
+            <i class="fas fa-paper-plane"></i> Send OTP
+          </button>
+          <input id="otpCode" type="text" maxlength="6" placeholder="Enter 6-digit code"
+            class="w-full bs-input text-center tracking-widest font-mono-code text-sm text-emerald-300 focus:outline-none" />
+          <button onclick="verifyOtp()" class="w-full py-2.5 rounded btn-bs-success text-xs font-bold flex items-center justify-center gap-2">
+            <i class="fas fa-check-circle"></i> Verify OTP
+          </button>
+        </section>
+
+        <!-- QR Cross-Device -->
+        <section class="bs-card p-5 rounded-xl space-y-3 sm:col-span-2">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="p-1.5 rounded bg-blue-500/15 text-blue-300 text-xs"><i class="fas fa-qrcode"></i></span>
+            QR Cross-Device Login
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-2">
+              <button onclick="qrGenerate()" class="w-full py-2.5 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2">
+                <i class="fas fa-bolt"></i> Generate Token (untrusted device)
+              </button>
+              <div id="qrTokenDisplay" class="text-[11px] break-all bg-gray-950 border border-gray-800 text-blue-300 font-mono-code p-2.5 rounded-lg min-h-[2.5rem]"></div>
+            </div>
+            <div class="space-y-2">
+              <input id="qrToken" type="text" placeholder="Paste token to approve"
+                class="w-full bs-input text-xs font-mono-code text-blue-300 focus:outline-none" />
+              <button onclick="qrApprove()" class="w-full py-2.5 rounded btn-bs-success text-xs font-bold flex items-center justify-center gap-2">
+                <i class="fas fa-mobile-screen-button"></i> Approve (logged-in phone)
+              </button>
+              <button onclick="qrCheckStatus()" class="w-full py-2.5 rounded btn-bs-secondary text-xs font-bold flex items-center justify-center gap-2">
+                <i class="fas fa-satellite-dish"></i> Check Status Once (poll)
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Step-Up -->
+        <section class="bs-card p-5 rounded-xl space-y-3 sm:col-span-2 border-red-500/25">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="p-1.5 rounded bg-red-500/15 text-red-400 text-xs"><i class="fas fa-user-lock"></i></span>
+            Step-Up Auth
+            <span class="ml-auto text-[10px] font-mono-code text-gray-400 font-normal">requires active session</span>
+          </h2>
+          <p class="text-[11px] text-gray-400">Log in via biometric or OTP above first, then test this.</p>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input id="stepUpCode" type="text" maxlength="6" placeholder="Enter 6-digit code"
+              class="flex-1 bs-input text-center tracking-widest font-mono-code text-sm text-red-300 focus:outline-none" />
+            <button onclick="stepUpVerify()" class="py-2.5 px-4 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2 flex-shrink-0">
+              <i class="fas fa-shield-halved"></i> Verify Step-Up OTP
+            </button>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Right column: JSON response output -->
+      <aside class="lg:col-span-1">
+        <div class="bs-card rounded-xl overflow-hidden sticky top-24">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gray-900/60">
+            <h2 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <i class="fas fa-terminal text-emerald-400"></i> Response Output
+            </h2>
+            <span class="flex items-center gap-1.5 text-[10px] font-mono-code text-gray-400">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> JSON
+            </span>
+          </div>
+          <pre id="output" class="text-emerald-300 text-[11px] font-mono-code p-4 overflow-auto max-h-[70vh] leading-relaxed">// Run an action to see the raw API response…</pre>
+        </div>
+      </aside>
+
     </div>
-
-    <hr />
-
-    <div class="space-y-2">
-      <h2 class="font-semibold">OTP</h2>
-      <button onclick="sendOtp()" class="bg-purple-600 text-white px-4 py-2 rounded w-full">
-        Send OTP
-      </button>
-      <input id="otpCode" type="text" class="w-full border rounded p-2" placeholder="Enter 6-digit code" />
-      <button onclick="verifyOtp()" class="bg-purple-800 text-white px-4 py-2 rounded w-full">
-        Verify OTP
-      </button>
-    </div>
-
-    <hr />
-
-    <div class="space-y-2">
-      <h2 class="font-semibold">QR Cross-Device Login</h2>
-      <button onclick="qrGenerate()" class="bg-orange-600 text-white px-4 py-2 rounded w-full">
-        Generate QR Token (untrusted device)
-      </button>
-      <div id="qrTokenDisplay" class="text-xs break-all bg-gray-100 p-2 rounded"></div>
-      <input id="qrToken" type="text" class="w-full border rounded p-2" placeholder="Paste token to approve" />
-      <button onclick="qrApprove()" class="bg-orange-800 text-white px-4 py-2 rounded w-full">
-        Approve (simulates already-logged-in phone)
-      </button>
-      <button onclick="qrCheckStatus()" class="bg-orange-400 text-white px-4 py-2 rounded w-full">
-        Check Status Once (simulates untrusted device polling)
-      </button>
-    </div>
-
-    <hr />
-
-    <div class="space-y-2">
-      <h2 class="font-semibold">Step-Up Auth (requires being logged in first)</h2>
-      <p class="text-xs text-gray-500">Log in via biometric or OTP above first, then test this.</p>
-      <input id="stepUpCode" type="text" class="w-full border rounded p-2" placeholder="Enter 6-digit code" />
-      <button onclick="stepUpVerify()" class="bg-red-700 text-white px-4 py-2 rounded w-full">
-        Verify Step-Up OTP
-      </button>
-    </div>
-
-    <pre id="output" class="bg-gray-900 text-green-400 text-xs p-3 rounded overflow-auto max-h-64"></pre>
-  </div>
+  </main>
 
 <script>
 const output = (data) => {

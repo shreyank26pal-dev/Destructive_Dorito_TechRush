@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en" class="dark" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <title>Approval Needed — Dorito Vault</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'] },
+          colors: {
+            gray: {
+              50: '#eef1f8', 100: '#dce2ef', 200: '#b6c0d9', 300: '#8b97b8', 400: '#626f92',
+              500: '#455070', 600: '#2e3650', 700: '#222a41', 800: '#171d30', 900: '#101627', 950: '#0a0e1a',
+            },
+            blue: {
+              50: '#eef0ff', 100: '#e0e2ff', 200: '#c7c9ff', 300: '#a5a4fb', 400: '#8b86f7',
+              500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .step-fade { opacity: 0; transform: translateY(10px); animation: stepIn 0.5s ease forwards; }
+    @keyframes stepIn { to { opacity: 1; transform: translateY(0); } }
+    .success-pop { animation: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .pulse-ring::after {
+      content: ""; position: absolute; inset: 0; border-radius: inherit;
+      border: 2px solid rgba(16, 185, 129, 0.5); animation: ring 2s ease-out infinite;
+    }
+    @keyframes ring { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.35); opacity: 0; } }
+    .btn-hero { transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease; }
+    .btn-hero:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 34px -12px rgba(79, 70, 229, 0.85); }
+    .btn-hero:active { transform: translateY(0); }
+    /* subtle amber breathing on the alert icon */
+    .alert-glow { animation: alertGlow 2.6s ease-in-out infinite; }
+    @keyframes alertGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } 50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.06); } }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center px-4 py-10 selection:bg-blue-600 selection:text-white">
+
+  <!-- Brand -->
+  <div class="flex items-center gap-3 mb-8">
+    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg">
+      <i class="fas fa-shield-cat text-lg"></i>
+    </div>
+    <div>
+      <div class="text-lg font-bold text-white tracking-tight leading-none">Dorito Vault</div>
+      <div class="text-[11px] text-blue-400 uppercase tracking-wider mt-1">Trusted Co-Signer</div>
+    </div>
+  </div>
+
+  <main class="w-full max-w-lg">
+
+    <!-- =================== STATE: PENDING / REVIEW =================== -->
+    <section id="state-pending" class="bs-card p-8 sm:p-10 rounded-2xl hidden">
+      <!-- Header: not an error — a normal request. Amber, not red. -->
+      <div class="flex flex-col items-center text-center">
+        <div class="alert-glow relative w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-5">
+          <i class="fas fa-bell text-2xl"></i>
+        </div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-semibold uppercase tracking-wider mb-4">
+          <i class="fas fa-hourglass-half text-[10px]"></i> Approval Needed
+        </div>
+        <h1 class="text-2xl sm:text-[28px] font-bold text-white leading-snug text-balance">
+          <span class="text-blue-400">{{ primary_user_name }}</span> needs your approval
+        </h1>
+        <p class="text-[15px] text-gray-300 leading-relaxed mt-4 max-w-md text-pretty">
+          A large or unusual transaction on their account needs a trusted co-signer to
+          approve it before it can go through. Please review the details below.
+        </p>
+      </div>
+
+      <!-- Transaction summary card — gracefully generic when details are absent -->
+      <div class="mt-8 rounded-xl bg-gray-800/60 border border-gray-700 overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-700 flex items-center gap-2">
+          <i class="fas fa-file-invoice-dollar text-blue-400 text-sm"></i>
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Transaction summary</span>
+        </div>
+
+        {% if transaction_amount or transaction_recipient %}
+        <div class="divide-y divide-gray-700">
+          {% if transaction_amount %}
+          <div class="flex items-center justify-between px-5 py-4">
+            <span class="text-sm text-gray-400">Amount</span>
+            <span class="text-lg font-bold text-white">{{ transaction_amount }}</span>
+          </div>
+          {% endif %}
+          {% if transaction_recipient %}
+          <div class="flex items-center justify-between px-5 py-4">
+            <span class="text-sm text-gray-400">Paying to</span>
+            <span class="text-sm font-semibold text-white text-right">{{ transaction_recipient }}</span>
+          </div>
+          {% endif %}
+          <div class="flex items-center justify-between px-5 py-4">
+            <span class="text-sm text-gray-400">Requested by</span>
+            <span class="text-sm font-semibold text-white text-right">{{ primary_user_name }}</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="px-5 py-6 text-center">
+          <p class="text-[15px] text-gray-200 font-medium">A transaction requires your approval</p>
+          <p class="text-[13px] text-gray-400 leading-relaxed mt-2 max-w-sm mx-auto">
+            For {{ primary_user_name }}'s security, the specific amount isn't shown here.
+            Only approve if you're expecting this — if you're unsure, decline and check with them first.
+          </p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Expiry countdown -->
+      <div id="countdown-box" class="mt-5 flex items-center justify-center gap-2 text-sm text-gray-300">
+        <i class="fas fa-clock text-amber-400"></i>
+        This request expires in
+        <span id="countdown" class="font-bold text-white tabular-nums">--:--</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="mt-8 space-y-3">
+        <button id="btn-approve"
+          class="btn-hero w-full py-4 rounded-xl btn-bs-primary text-base font-bold flex items-center justify-center gap-3">
+          <i class="fas fa-fingerprint text-lg"></i>
+          <span id="btn-approve-label">Approve with Passkey</span>
+        </button>
+        <button id="btn-deny"
+          class="w-full py-3.5 rounded-xl bg-transparent border border-gray-700 text-gray-300 text-sm font-semibold hover:bg-gray-800 hover:text-white hover:border-gray-600 transition-colors flex items-center justify-center gap-2">
+          <i class="fas fa-xmark"></i>
+          <span id="btn-deny-label">Deny this transaction</span>
+        </button>
+        <p class="text-center text-xs text-gray-400 pt-1">
+          <i class="fas fa-lock text-gray-500"></i>
+          Approving uses your device's fingerprint, face, or PIN.
+        </p>
+      </div>
+    </section>
+
+    <!-- =================== STATE: APPROVED =================== -->
+    <section id="state-success" class="bs-card p-8 sm:p-10 rounded-2xl text-center hidden">
+      <div class="relative w-20 h-20 mx-auto mb-6">
+        <div class="pulse-ring absolute inset-0 rounded-full"></div>
+        <div class="success-pop w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+          <i class="fas fa-check text-3xl"></i>
+        </div>
+      </div>
+      <h1 class="text-2xl font-bold text-white">Approved</h1>
+      <p class="text-[15px] text-gray-300 leading-relaxed mt-4 max-w-md mx-auto text-pretty">
+        Thank you. The transaction can now proceed on
+        <span class="text-white font-medium">{{ primary_user_name }}</span>'s account.
+      </p>
+      <div class="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300">
+        <i class="fas fa-circle-info text-blue-400"></i>
+        You can safely close this tab now.
+      </div>
+    </section>
+
+    <!-- =================== STATE: DENIED =================== -->
+    <section id="state-denied" class="bs-card p-8 sm:p-10 rounded-2xl text-center hidden">
+      <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gray-700/60 border border-gray-600 flex items-center justify-center text-gray-300">
+        <i class="fas fa-ban text-2xl"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-white">Transaction declined</h1>
+      <p class="text-[15px] text-gray-300 leading-relaxed mt-4 max-w-md mx-auto text-pretty">
+        You declined this request, so the transaction will not go through. If this was a
+        mistake, ask <span class="text-white font-medium">{{ primary_user_name }}</span> to
+        start the transaction again.
+      </p>
+      <div class="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300">
+        <i class="fas fa-circle-info text-blue-400"></i>
+        You can safely close this tab now.
+      </div>
+    </section>
+
+    <!-- =================== STATE: ALREADY RESOLVED / EXPIRED =================== -->
+    <section id="state-resolved" class="bs-card p-8 sm:p-10 rounded-2xl text-center hidden">
+      <div id="resolved-icon" class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gray-700/60 border border-gray-600 flex items-center justify-center text-gray-300">
+        <i class="fas fa-circle-check text-2xl"></i>
+      </div>
+      <h1 id="resolved-title" class="text-2xl font-bold text-white">This request is already handled</h1>
+      <p id="resolved-message" class="text-[15px] text-gray-300 leading-relaxed mt-4 max-w-md mx-auto text-pretty">
+        No action is needed from you right now.
+      </p>
+      <div class="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300">
+        <i class="fas fa-circle-info text-blue-400"></i>
+        You can safely close this tab.
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="mt-10 text-center text-xs text-gray-400">
+    <span class="inline-flex items-center gap-1.5">
+      <i class="fas fa-lock text-gray-500"></i>
+      Protected by Dorito Vault passwordless security
+    </span>
+  </footer>
+
+  <div id="toast-container"></div>
+
+  <script>
+    // ---- Jinja-provided context (safe defaults so the page renders standalone) ----
+    const REQUEST_ID = "{{ request_id }}";
+    const INITIAL_STATUS = "{{ initial_status }}";      // pending | approved | denied | expired | not_found
+    const MINUTES_REMAINING = parseInt("{{ minutes_remaining }}", 10) || 0;
+    const API_BASE = "/api/security/co-signer";
+
+    // ---- base64url <-> ArrayBuffer helpers (WebAuthn wire format) ----
+    function b64urlToBuf(b64url) {
+      const pad = "=".repeat((4 - (b64url.length % 4)) % 4);
+      const b64 = (b64url + pad).replace(/-/g, "+").replace(/_/g, "/");
+      const raw = atob(b64);
+      const buf = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+      return buf.buffer;
+    }
+    function bufToB64url(buf) {
+      const bytes = new Uint8Array(buf);
+      let str = "";
+      for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+      return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+
+    function showState(id) {
+      ["state-pending", "state-success", "state-denied", "state-resolved"].forEach((s) => {
+        document.getElementById(s).classList.toggle("hidden", s !== id);
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function toast(message, type) {
+      const c = document.getElementById("toast-container");
+      const el = document.createElement("div");
+      el.className = "toast toast-" + (type || "info");
+      el.textContent = message;
+      c.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    function showResolved(title, message, iconClass, iconColor) {
+      document.getElementById("resolved-title").textContent = title;
+      document.getElementById("resolved-message").textContent = message;
+      const iconWrap = document.getElementById("resolved-icon");
+      iconWrap.querySelector("i").className = iconClass;
+      if (iconColor) iconWrap.className = iconWrap.className.replace(/text-\S+/, iconColor);
+      showState("state-resolved");
+    }
+
+    // ---- Live countdown (visual only; server enforces the real expiry) ----
+    let countdownTimer = null;
+    function startCountdown(minutes) {
+      let secondsLeft = minutes * 60;
+      const el = document.getElementById("countdown");
+      const box = document.getElementById("countdown-box");
+      function tick() {
+        if (secondsLeft <= 0) {
+          clearInterval(countdownTimer);
+          el.textContent = "0:00";
+          box.classList.add("text-red-400");
+          showResolved(
+            "This request has expired",
+            "For security, approval requests are only valid for a short time. Please ask " +
+              "{{ primary_user_name }}" + " to start the transaction again if it's still needed.",
+            "fas fa-hourglass-end text-2xl",
+            "text-amber-400"
+          );
+          return;
+        }
+        const m = Math.floor(secondsLeft / 60);
+        const s = secondsLeft % 60;
+        el.textContent = m + ":" + String(s).padStart(2, "0");
+        if (secondsLeft <= 60) { box.classList.remove("text-gray-300"); box.classList.add("text-amber-300"); }
+        secondsLeft--;
+      }
+      tick();
+      countdownTimer = setInterval(tick, 1000);
+    }
+
+    // ---- Approve with passkey ----
+    const btnApprove = document.getElementById("btn-approve");
+    const btnApproveLabel = document.getElementById("btn-approve-label");
+    const btnDeny = document.getElementById("btn-deny");
+
+    function setApproveBusy(busy) {
+      btnApprove.disabled = busy;
+      btnDeny.disabled = busy;
+      btnApprove.style.opacity = busy ? "0.7" : "1";
+      btnApprove.style.cursor = busy ? "wait" : "pointer";
+      btnApproveLabel.textContent = busy ? "Waiting for your device…" : "Approve with Passkey";
+    }
+
+    function handleResolvedError(message) {
+      const msg = (message || "").toLowerCase();
+      if (msg.includes("expired")) {
+        showResolved("This request has expired",
+          "For security, approval requests are only valid for a short time. Please ask " +
+          "{{ primary_user_name }}" + " to start the transaction again if it's still needed.",
+          "fas fa-hourglass-end text-2xl", "text-amber-400");
+      } else if (msg.includes("approved")) {
+        showResolved("Already approved", "This transaction has already been approved. Nothing more to do.",
+          "fas fa-circle-check text-2xl", "text-emerald-400");
+      } else if (msg.includes("denied")) {
+        showResolved("Already declined", "This request was already declined, so the transaction won't proceed.",
+          "fas fa-ban text-2xl", "text-gray-300");
+      } else if (msg.includes("not found")) {
+        showResolved("Request not found", "This approval link is no longer valid. You can safely close this tab.",
+          "fas fa-link-slash text-2xl", "text-gray-300");
+      } else {
+        toast(message || "Something went wrong. Please try again.", "error");
+        return false;
+      }
+      return true;
+    }
+
+    async function approve() {
+      if (!window.PublicKeyCredential || !navigator.credentials) {
+        toast("This device or browser doesn't support passkeys. Try the phone you set up with.", "error");
+        return;
+      }
+      setApproveBusy(true);
+      try {
+        // 1) Get authentication options
+        const optRes = await fetch(API_BASE + "/approve-options", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: REQUEST_ID }),
+        });
+        const optData = await optRes.json();
+        if (optData.status !== "success") {
+          if (handleResolvedError(optData.message)) return;
+          setApproveBusy(false);
+          return;
+        }
+
+        const options = typeof optData.data.options === "string"
+          ? JSON.parse(optData.data.options)
+          : optData.data.options;
+
+        // 2) Decode into browser binary format
+        const publicKey = { ...options, challenge: b64urlToBuf(options.challenge) };
+        if (Array.isArray(options.allowCredentials)) {
+          publicKey.allowCredentials = options.allowCredentials.map((c) => ({
+            ...c, id: b64urlToBuf(c.id),
+          }));
+        }
+
+        // 3) Prompt the authenticator
+        const assertion = await navigator.credentials.get({ publicKey });
+
+        // 4) Serialize assertion back to base64url wire format
+        const payloadCredential = {
+          id: assertion.id,
+          rawId: bufToB64url(assertion.rawId),
+          type: assertion.type,
+          clientExtensionResults: assertion.getClientExtensionResults?.() || {},
+          response: {
+            clientDataJSON: bufToB64url(assertion.response.clientDataJSON),
+            authenticatorData: bufToB64url(assertion.response.authenticatorData),
+            signature: bufToB64url(assertion.response.signature),
+            userHandle: assertion.response.userHandle ? bufToB64url(assertion.response.userHandle) : null,
+          },
+        };
+
+        // 5) Verify with server
+        const verRes = await fetch(API_BASE + "/approve-verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: REQUEST_ID, credential: payloadCredential }),
+        });
+        const verData = await verRes.json();
+        if (verData.status === "success") {
+          if (countdownTimer) clearInterval(countdownTimer);
+          showState("state-success");
+        } else {
+          if (handleResolvedError(verData.message)) return;
+          setApproveBusy(false);
+        }
+      } catch (err) {
+        if (err && (err.name === "NotAllowedError" || err.name === "AbortError")) {
+          toast("Approval was cancelled. Tap the button again when you're ready.", "info");
+        } else {
+          toast("Something went wrong approving. Please try again.", "error");
+        }
+        setApproveBusy(false);
+      }
+    }
+
+    // ---- Deny (no passkey needed — declining is a safety action) ----
+    async function deny() {
+      if (!window.confirm("Decline this transaction? It will not go through.")) return;
+      setApproveBusy(true);
+      document.getElementById("btn-deny-label").textContent = "Declining…";
+      try {
+        const res = await fetch(API_BASE + "/deny", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: REQUEST_ID }),
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+          if (countdownTimer) clearInterval(countdownTimer);
+          showState("state-denied");
+        } else {
+          if (!handleResolvedError(data.message)) {
+            setApproveBusy(false);
+            document.getElementById("btn-deny-label").textContent = "Deny this transaction";
+          }
+        }
+      } catch (err) {
+        toast("Couldn't record your decision. Please try again.", "error");
+        setApproveBusy(false);
+        document.getElementById("btn-deny-label").textContent = "Deny this transaction";
+      }
+    }
+
+    btnApprove.addEventListener("click", approve);
+    btnDeny.addEventListener("click", deny);
+
+    // ---- Boot: open directly in the state the server resolved ----
+    (function init() {
+      if (INITIAL_STATUS === "pending") {
+        showState("state-pending");
+        startCountdown(MINUTES_REMAINING);
+      } else if (INITIAL_STATUS === "approved") {
+        showResolved("Already approved", "This transaction has already been approved. Nothing more to do.",
+          "fas fa-circle-check text-2xl", "text-emerald-400");
+      } else if (INITIAL_STATUS === "denied") {
+        showResolved("Already declined", "This request was already declined, so the transaction won't proceed.",
+          "fas fa-ban text-2xl", "text-gray-300");
+      } else if (INITIAL_STATUS === "expired") {
+        showResolved("This request has expired",
+          "For security, approval requests are only valid for a short time. Please ask " +
+          "{{ primary_user_name }}" + " to start the transaction again if it's still needed.",
+          "fas fa-hourglass-end text-2xl", "text-amber-400");
+      } else {
+        showResolved("Request not found", "This approval link is no longer valid. You can safely close this tab.",
+          "fas fa-link-slash text-2xl", "text-gray-300");
+      }
+    })();
+  </script>
+</body>
+</html>
