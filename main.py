@@ -73,6 +73,12 @@ def dashboard_page(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
+@app.get("/admin", response_class=HTMLResponse)
+def admin_page(request: Request):
+    """Admin-only Security Operations console (cross-user audit + step-up telemetry)."""
+    return templates.TemplateResponse("admin.html", {"request": request})
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}

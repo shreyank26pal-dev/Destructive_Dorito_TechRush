@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — Security Operations · Dorito Vault{% endblock %}
+
+{% block content %}
+<!--
+  ADMIN SECURITY OPERATIONS CONSOLE
+  ------------------------------------------------------------------
+  Internal, admin-only view of security/audit data across ALL users.
+  Plain HTML/CSS/vanilla JS — no build step.
+
+  Integration notes for later:
+    - Replace the JS `SAMPLE_AUDIT` / `SAMPLE_ACTIONS` arrays and the
+      fetchAuditLog() / fetchSensitiveActions() stubs with real fetch()
+      calls (or render server-side with {{ jinja }} loops into the
+      <tbody> elements: #audit-tbody and #actions-tbody).
+    - NEVER render raw IP addresses. Only resolved city/country is shown.
+-->
+<div class="w-full max-w-7xl space-y-5">
+
+  <!-- ===================================================================
+       PAGE HEADER — Admin marker
+       =================================================================== -->
+  <div class="admin-card p-5 sm:p-6 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-lg bg-indigo-500/15 border border-indigo-400/30 text-indigo-300 flex items-center justify-center text-xl flex-shrink-0">
+        <i class="fas fa-shield-halved"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="text-xl font-bold text-white">Admin — Security Operations</h1>
+          <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 text-[11px] font-bold font-mono-code flex items-center gap-1.5 uppercase tracking-wide">
+            <i class="fas fa-user-lock text-[10px]"></i> Admin Only
+          </span>
+        </div>
+        <p class="text-xs font-mono-code text-gray-400 mt-0.5">Cross-user audit &amp; step-up telemetry · operations center</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div class="hidden sm:flex flex-col items-end">
+        <span class="text-[10px] uppercase tracking-wider text-gray-500 font-mono-code">Last synced</span>
+        <span id="last-synced" class="text-xs font-mono-code text-indigo-300">—</span>
+      </div>
+      <button onclick="refreshAll()" class="px-3.5 py-2 rounded btn-admin-primary text-xs font-bold flex items-center gap-2">
+        <i class="fas fa-rotate"></i> Refresh All
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       INFORMATIONAL ADMIN-ONLY BANNER (informational, not alarming)
+       =================================================================== -->
+  <div class="admin-note flex items-start gap-3 p-3.5 rounded-lg">
+    <i class="fas fa-circle-info text-indigo-300 mt-0.5"></i>
+    <p class="text-xs text-indigo-100/80 leading-relaxed">
+      This console is restricted to <span class="font-semibold text-indigo-200">admin accounts</span>.
+      It aggregates authentication and step-up activity across every user for
+      security review. Raw IP addresses are never displayed — only resolved
+      city / country. Access is itself logged.
+    </p>
+  </div>
+
+  <!-- ===================================================================
+       QUICK STAT STRIP (lightweight, derived from loaded rows)
+       =================================================================== -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="admin-card p-4 rounded-xl">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] uppercase tracking-wider text-gray-500 font-mono-code">Total Events</span>
+        <i class="fas fa-list-check text-indigo-400/70 text-sm"></i>
+      </div>
+      <p id="stat-total" class="text-2xl font-bold text-white mt-1 font-mono-code">0</p>
+    </div>
+    <div class="admin-card p-4 rounded-xl">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] uppercase tracking-wider text-gray-500 font-mono-code">Failures</span>
+        <i class="fas fa-triangle-exclamation text-rose-400/70 text-sm"></i>
+      </div>
+      <p id="stat-failures" class="text-2xl font-bold text-rose-300 mt-1 font-mono-code">0</p>
+    </div>
+    <div class="admin-card p-4 rounded-xl">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] uppercase tracking-wider text-gray-500 font-mono-code">Unique Users</span>
+        <i class="fas fa-users text-indigo-400/70 text-sm"></i>
+      </div>
+      <p id="stat-users" class="text-2xl font-bold text-white mt-1 font-mono-code">0</p>
+    </div>
+    <div class="admin-card p-4 rounded-xl">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] uppercase tracking-wider text-gray-500 font-mono-code">Pending Step-Ups</span>
+        <i class="fas fa-hourglass-half text-amber-400/70 text-sm"></i>
+      </div>
+      <p id="stat-pending" class="text-2xl font-bold text-amber-300 mt-1 font-mono-code">0</p>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       AUTHENTICATION AUDIT LOG (cross-user)
+       =================================================================== -->
+  <section class="admin-card p-5 sm:p-6 rounded-xl space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fas fa-clock-rotate-left text-indigo-400"></i> Authentication Audit Log
+        </h2>
+        <p class="text-xs text-gray-400 mt-0.5">All login attempts across every account · newest first.</p>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <label class="text-[11px] text-gray-400 font-mono-code flex items-center gap-1.5">
+          Page size
+          <select id="audit-page-size" onchange="renderAudit()" class="admin-select text-xs font-mono-code">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <button onclick="refreshAudit()" class="px-3 py-1.5 rounded btn-admin-ghost text-xs font-semibold flex items-center gap-1.5">
+          <i class="fas fa-rotate"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse min-w-[720px]">
+        <thead>
+          <tr class="border-b border-white/10 text-[11px] text-gray-400 font-semibold uppercase tracking-wider font-mono-code">
+            <th class="py-3 px-3">User ID</th>
+            <th class="py-3 px-3">Method</th>
+            <th class="py-3 px-3">Status</th>
+            <th class="py-3 px-3">Device Info</th>
+            <th class="py-3 px-3">Location</th>
+            <th class="py-3 px-3">
+              <button onclick="toggleAuditSort()" class="flex items-center gap-1.5 hover:text-indigo-300 transition-colors uppercase tracking-wider">
+                Timestamp <i id="audit-sort-icon" class="fas fa-arrow-down-long text-[10px]"></i>
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="audit-tbody"><!-- rows injected by renderAudit() --></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       SENSITIVE ACTIONS (step-up authenticated, cross-user)
+       =================================================================== -->
+  <section class="admin-card p-5 sm:p-6 rounded-xl space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fas fa-key text-indigo-400"></i> Sensitive Actions
+        </h2>
+        <p class="text-xs text-gray-400 mt-0.5">Step-up authenticated actions requested across all users.</p>
+      </div>
+      <button onclick="refreshActions()" class="px-3 py-1.5 rounded btn-admin-ghost text-xs font-semibold flex items-center gap-1.5 w-fit">
+        <i class="fas fa-rotate"></i> Refresh
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse min-w-[640px]">
+        <thead>
+          <tr class="border-b border-white/10 text-[11px] text-gray-400 font-semibold uppercase tracking-wider font-mono-code">
+            <th class="py-3 px-3">User ID</th>
+            <th class="py-3 px-3">Action</th>
+            <th class="py-3 px-3">Completed</th>
+            <th class="py-3 px-3">Created At</th>
+            <th class="py-3 px-3">Expires At</th>
+          </tr>
+        </thead>
+        <tbody id="actions-tbody"><!-- rows injected by renderActions() --></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<!-- ===================================================================
+     ADMIN-SPECIFIC STYLING (indigo/violet operations accent layered
+     on top of the shared bootstrap design system)
+     =================================================================== -->
+<style>
+  .admin-card {
+    background-color: #191b26;
+    border: 1px solid rgba(129, 140, 248, 0.14);
+    border-radius: var(--bs-border-radius-lg);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5);
+    transition: border-color 0.2s ease;
+  }
+  .admin-card:hover { border-color: rgba(129, 140, 248, 0.3); }
+
+  .admin-note {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.14), rgba(79, 70, 229, 0.04));
+    border: 1px solid rgba(129, 140, 248, 0.25);
+  }
+
+  .btn-admin-primary {
+    background-color: #4f46e5;
+    border: 1px solid #4f46e5;
+    color: #fff;
+    transition: all 0.15s ease-in-out;
+  }
+  .btn-admin-primary:hover {
+    background-color: #4338ca;
+    border-color: #4338ca;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+  }
+
+  .btn-admin-ghost {
+    background-color: rgba(129, 140, 248, 0.1);
+    border: 1px solid rgba(129, 140, 248, 0.28);
+    color: #c7d2fe;
+    transition: all 0.15s ease-in-out;
+  }
+  .btn-admin-ghost:hover {
+    background-color: rgba(129, 140, 248, 0.2);
+    color: #e0e7ff;
+  }
+
+  .admin-select {
+    background-color: #2b2f3e;
+    border: 1px solid rgba(129, 140, 248, 0.28);
+    color: #e0e7ff;
+    border-radius: var(--bs-border-radius-sm);
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+  }
+  .admin-select:focus { outline: none; border-color: #818cf8; }
+
+  #audit-tbody tr, #actions-tbody tr { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  #audit-tbody tr:hover, #actions-tbody tr:hover { background-color: rgba(129, 140, 248, 0.05); }
+
+  /* Status / boolean pills */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+  .pill-success { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+  .pill-danger  { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3); }
+  .pill-warning { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+  .pill-neutral { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+  .pill-indigo  { background: rgba(129, 140, 248, 0.15); color: #c7d2fe; border: 1px solid rgba(129, 140, 248, 0.3); }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 2.75rem 1rem;
+    color: #64748b;
+  }
+  .empty-state i { font-size: 1.75rem; color: rgba(129, 140, 248, 0.4); }
+  .empty-state .empty-title { font-size: 0.85rem; font-weight: 600; color: #94a3b8; }
+  .empty-state .empty-sub { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; }
+</style>
+
+<!-- ===================================================================
+     ADMIN CONSOLE LOGIC (vanilla JS)
+     =================================================================== -->
+<script>
+  // -----------------------------------------------------------------
+  // SAMPLE DATA — replace with fetch() results or {{ jinja }} render.
+  // Location is ALWAYS pre-resolved city/country. No raw IPs here.
+  // -----------------------------------------------------------------
+  const SAMPLE_AUDIT = [
+    { user_id: "usr_8842", method: "webauthn", status: "success", device: "Chrome · macOS", location: "Austin, US",     timestamp: "2026-08-11T14:32:07Z" },
+    { user_id: "usr_1290", method: "otp",      status: "failed",  device: "Safari · iOS",   location: "Berlin, DE",     timestamp: "2026-08-11T14:28:51Z" },
+    { user_id: "usr_8842", method: "qr",       status: "success", device: "Firefox · Windows", location: "Austin, US",  timestamp: "2026-08-11T13:59:12Z" },
+    { user_id: "usr_4471", method: "webauthn", status: "success", device: "Edge · Windows", location: "Toronto, CA",    timestamp: "2026-08-11T13:41:33Z" },
+    { user_id: "usr_1290", method: "otp",      status: "success", device: "Safari · iOS",   location: "Berlin, DE",     timestamp: "2026-08-11T13:22:05Z" },
+    { user_id: "usr_9903", method: "recovery", status: "pending", device: "Chrome · Android", location: "Mumbai, IN",   timestamp: "2026-08-11T12:47:40Z" },
+    { user_id: "usr_4471", method: "otp",      status: "failed",  device: "Edge · Windows", location: "Toronto, CA",    timestamp: "2026-08-11T11:18:29Z" },
+  ];
+
+  const SAMPLE_ACTIONS = [
+    { user_id: "usr_8842", action: "Wire Transfer ($10,000)", completed: true,  created_at: "2026-08-11T14:31:02Z", expires_at: "2026-08-11T14:36:02Z" },
+    { user_id: "usr_4471", action: "Add Payee",               completed: false, created_at: "2026-08-11T13:40:10Z", expires_at: "2026-08-11T13:45:10Z" },
+    { user_id: "usr_1290", action: "Revoke All Sessions",     completed: true,  created_at: "2026-08-11T13:20:44Z", expires_at: "2026-08-11T13:25:44Z" },
+  ];
+
+  // In-memory state (swap the loaders below for real endpoints).
+  let auditRows = [];
+  let actionRows = [];
+  let auditSortDesc = true; // most recent first by default
+
+  // -----------------------------------------------------------------
+  // DATA LOADERS — TODO: replace bodies with fetch() to admin endpoints
+  //   e.g. const res = await apiCall('/api/admin/audit-log');
+  // -----------------------------------------------------------------
+  async function fetchAuditLog() {
+    // return (await apiCall('/api/admin/audit-log')).data || [];
+    return JSON.parse(JSON.stringify(SAMPLE_AUDIT));
+  }
+  async function fetchSensitiveActions() {
+    // return (await apiCall('/api/admin/sensitive-actions')).data || [];
+    return JSON.parse(JSON.stringify(SAMPLE_ACTIONS));
+  }
+
+  // -----------------------------------------------------------------
+  // FORMATTING HELPERS
+  // -----------------------------------------------------------------
+  function esc(v) {
+    return String(v == null ? "" : v)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return esc(iso);
+    return d.toLocaleString(undefined, {
+      year: "numeric", month: "short", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+  }
+
+  function statusPill(status) {
+    const s = String(status || "").toLowerCase();
+    if (s === "success") return `<span class="pill pill-success"><i class="fas fa-check"></i> Success</span>`;
+    if (s === "failed")  return `<span class="pill pill-danger"><i class="fas fa-xmark"></i> Failed</span>`;
+    if (s === "pending") return `<span class="pill pill-warning"><i class="fas fa-hourglass-half"></i> Pending</span>`;
+    return `<span class="pill pill-neutral">${esc(status)}</span>`;
+  }
+
+  function methodPill(method) {
+    const map = { webauthn: "fa-fingerprint", otp: "fa-hashtag", qr: "fa-qrcode", recovery: "fa-life-ring" };
+    const icon = map[String(method).toLowerCase()] || "fa-shield";
+    return `<span class="pill pill-indigo"><i class="fas ${icon}"></i> ${esc(method)}</span>`;
+  }
+
+  function boolBadge(done) {
+    return done
+      ? `<span class="pill pill-success"><i class="fas fa-check"></i> Yes</span>`
+      : `<span class="pill pill-neutral"><i class="fas fa-minus"></i> No</span>`;
+  }
+
+  function emptyRow(colspan, title, sub, icon) {
+    return `<tr><td colspan="${colspan}">
+      <div class="empty-state">
+        <i class="fas ${icon}"></i>
+        <span class="empty-title">${esc(title)}</span>
+        <span class="empty-sub">${esc(sub)}</span>
+      </div>
+    </td></tr>`;
+  }
+
+  // -----------------------------------------------------------------
+  // RENDERERS
+  // -----------------------------------------------------------------
+  function renderAudit() {
+    const tbody = document.getElementById("audit-tbody");
+    const pageSize = parseInt(document.getElementById("audit-page-size").value, 10) || 25;
+
+    if (!auditRows.length) {
+      tbody.innerHTML = emptyRow(6, "No authentication events yet",
+        "Login activity across all users will appear here.", "fa-inbox");
+      return;
+    }
+
+    const sorted = [...auditRows].sort((a, b) => {
+      const cmp = new Date(a.timestamp) - new Date(b.timestamp);
+      return auditSortDesc ? -cmp : cmp;
+    }).slice(0, pageSize);
+
+    tbody.innerHTML = sorted.map(r => `
+      <tr class="text-xs text-gray-300">
+        <td class="py-3 px-3 font-mono-code text-indigo-200">${esc(r.user_id)}</td>
+        <td class="py-3 px-3">${methodPill(r.method)}</td>
+        <td class="py-3 px-3">${statusPill(r.status)}</td>
+        <td class="py-3 px-3 text-gray-300">${esc(r.device)}</td>
+        <td class="py-3 px-3 text-gray-300"><i class="fas fa-location-dot text-indigo-400/60 mr-1"></i>${esc(r.location)}</td>
+        <td class="py-3 px-3 font-mono-code text-gray-400 whitespace-nowrap">${fmtTime(r.timestamp)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderActions() {
+    const tbody = document.getElementById("actions-tbody");
+    if (!actionRows.length) {
+      tbody.innerHTML = emptyRow(5, "No sensitive actions recorded",
+        "Step-up authenticated actions will appear here.", "fa-shield-halved");
+      return;
+    }
+    tbody.innerHTML = actionRows.map(r => `
+      <tr class="text-xs text-gray-300">
+        <td class="py-3 px-3 font-mono-code text-indigo-200">${esc(r.user_id)}</td>
+        <td class="py-3 px-3 text-gray-200">${esc(r.action)}</td>
+        <td class="py-3 px-3">${boolBadge(!!r.completed)}</td>
+        <td class="py-3 px-3 font-mono-code text-gray-400 whitespace-nowrap">${fmtTime(r.created_at)}</td>
+        <td class="py-3 px-3 font-mono-code text-gray-400 whitespace-nowrap">${fmtTime(r.expires_at)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderStats() {
+    const now = Date.now();
+    document.getElementById("stat-total").textContent = auditRows.length;
+    document.getElementById("stat-failures").textContent =
+      auditRows.filter(r => String(r.status).toLowerCase() === "failed").length;
+    document.getElementById("stat-users").textContent =
+      new Set(auditRows.map(r => r.user_id)).size;
+    document.getElementById("stat-pending").textContent =
+      actionRows.filter(r => !r.completed && new Date(r.expires_at).getTime() > now).length;
+  }
+
+  function stampSynced() {
+    const el = document.getElementById("last-synced");
+    if (el) el.textContent = new Date().toLocaleTimeString();
+  }
+
+  // -----------------------------------------------------------------
+  // SORT + REFRESH CONTROLS
+  // -----------------------------------------------------------------
+  function toggleAuditSort() {
+    auditSortDesc = !auditSortDesc;
+    const icon = document.getElementById("audit-sort-icon");
+    icon.className = "fas text-[10px] " + (auditSortDesc ? "fa-arrow-down-long" : "fa-arrow-up-long");
+    renderAudit();
+  }
+
+  async function refreshAudit() {
+    auditRows = await fetchAuditLog();
+    renderAudit();
+    renderStats();
+    stampSynced();
+    if (window.showToast) showToast("Audit log refreshed.", "info");
+  }
+
+  async function refreshActions() {
+    actionRows = await fetchSensitiveActions();
+    renderActions();
+    renderStats();
+    stampSynced();
+    if (window.showToast) showToast("Sensitive actions refreshed.", "info");
+  }
+
+  async function refreshAll() {
+    await Promise.all([
+      (async () => { auditRows = await fetchAuditLog(); })(),
+      (async () => { actionRows = await fetchSensitiveActions(); })(),
+    ]);
+    renderAudit();
+    renderActions();
+    renderStats();
+    stampSynced();
+    if (window.showToast) showToast("Security operations data refreshed.", "success");
+  }
+
+  // Initial load
+  document.addEventListener("DOMContentLoaded", refreshAll);
+</script>
+{% endblock %}
