@@ -3,14 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#121416" />
+  <meta name="theme-color" content="#0a0e1a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
   <title>{% block title %}Dorito Vault — Passwordless Security Core{% endblock %}</title>
 
   <!-- Google Fonts, Tailwind CSS & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Premium fintech palette: navy near-black surfaces + deep blue-purple accent.
+    // Remaps the color scales the templates already use so existing utility
+    // classes (bg-gray-900, text-blue-400, border-gray-800, ...) adopt the new look.
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          colors: {
+            // Navy / slate surface scale
+            gray: {
+              50:  '#eef1f8',
+              100: '#dce2ef',
+              200: '#b6c0d9',
+              300: '#8b97b8',
+              400: '#626f92',
+              500: '#455070',
+              600: '#2e3650',
+              700: '#222a41',
+              800: '#171d30',
+              900: '#101627',
+              950: '#0a0e1a',
+            },
+            // Deep blue-purple primary accent scale (centered on #4f46e5)
+            blue: {
+              50:  '#eef0ff',
+              100: '#e0e2ff',
+              200: '#c7c9ff',
+              300: '#a5a4fb',
+              400: '#8b86f7',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+              950: '#1e1b4b',
+            },
+          },
+        },
+      },
+    };
+  </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   
   <!-- QRCode.js library for rendering QR codes -->
@@ -31,11 +79,11 @@
       </div>
       <div>
         <h1 class="text-3xl font-bold font-heading text-white tracking-tight">Dorito Vault</h1>
-        <p class="text-xs font-mono-code text-blue-400 mt-1 uppercase">Bootstrap Security Core</p>
+        <p class="text-xs font-mono-code text-blue-400 mt-1 uppercase">Passwordless Security Core</p>
       </div>
       <div class="flex items-center justify-center gap-2 text-xs font-mono-code text-gray-400">
         <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-        <span id="intro-status-text">INITIALIZING BOOTSTRAP VAULT...</span>
+        <span id="intro-status-text">INITIALIZING SECURE VAULT...</span>
       </div>
     </div>
   </div>
@@ -101,7 +149,7 @@
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-        <p>&copy; 2026 Dorito Vault. Bootstrap Natural Passwordless Security.</p>
+        <p>&copy; 2026 Dorito Vault. Passwordless Security Core.</p>
       </div>
       <div class="flex items-center gap-4 text-gray-400 font-mono-code text-[11px]">
         <span class="text-blue-400"><i class="fas fa-shield-cat"></i> WebAuthn</span>
