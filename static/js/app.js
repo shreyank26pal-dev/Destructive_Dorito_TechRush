@@ -1036,60 +1036,198 @@ function initParticleCanvas() {
   let width = canvas.width = window.innerWidth;
   let height = canvas.height = window.innerHeight;
 
+  let mouseX = width / 2;
+  let mouseY = height / 2;
+  let targetMouseX = width / 2;
+  let targetMouseY = height / 2;
+
   window.addEventListener('resize', () => {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
   });
 
-  const particles = [];
-  const particleCount = 40;
-
-  for (let i = 0; i < particleCount; i++) {
-    particles.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      radius: Math.random() * 1.8 + 0.8,
-      alpha: Math.random() * 0.35 + 0.15
-    });
-  }
+  window.addEventListener('mousemove', (e) => {
+    targetMouseX = e.clientX;
+    targetMouseY = e.clientY;
+  });
 
   function draw() {
     ctx.clearRect(0, 0, width, height);
 
-    for (let i = 0; i < particleCount; i++) {
-      const p = particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
+    const isDark = document.documentElement.classList.contains('dark');
+    const baseColor = isDark ? "16, 185, 129" : "200, 85, 43"; // Green vs Terracotta
 
-      if (p.x < 0 || p.x > width) p.vx *= -1;
-      if (p.y < 0 || p.y > height) p.vy *= -1;
+    // Smooth mouse coordinates interpolation
+    mouseX += (targetMouseX - mouseX) * 0.08;
+    mouseY += (targetMouseY - mouseY) * 0.08;
 
+    // Horizon line height
+    const horizon = height * 0.45;
+    const vanishingX = width / 2;
+
+    ctx.lineWidth = 1.0;
+
+    // 1. Draw glowing background grid spotlight at cursor position (increased brightness)
+    const gradient = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 300);
+    gradient.addColorStop(0, `rgba(${baseColor}, 0.28)`);
+    gradient.addColorStop(0.5, `rgba(${baseColor}, 0.08)`);
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. Draw Layer 1: Deep Background Grid (Slower movement, smaller scale)
+    ctx.lineWidth = 0.8;
+    const spacing1 = 90;
+    const offsetX1 = (mouseX - width / 2) * -0.02;
+    const offsetY1 = (mouseY - height / 2) * -0.02;
+
+    ctx.strokeStyle = `rgba(${baseColor}, 0.06)`;
+    // Vertical lines
+    for (let x = offsetX1 % spacing1; x < width; x += spacing1) {
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(13, 110, 253, ${p.alpha})`;
-      ctx.fill();
-
-      for (let j = i + 1; j < particleCount; j++) {
-        const p2 = particles[j];
-        const dx = p.x - p2.x;
-        const dy = p.y - p2.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < 130) {
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.strokeStyle = `rgba(13, 110, 253, ${0.1 * (1 - dist / 130)})`;
-          ctx.lineWidth = 0.7;
-          ctx.stroke();
-        }
-      }
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
     }
+    // Horizontal lines
+    for (let y = offsetY1 % spacing1; y < height; y += spacing1) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    // 3. Draw Layer 2: Foreground Interactive Grid (Faster movement, larger scale)
+    ctx.lineWidth = 1.2;
+    const spacing2 = 60;
+    const offsetX2 = (mouseX - width / 2) * -0.05;
+    const offsetY2 = (mouseY - height / 2) * -0.05;
+
+    // Vertical lines
+    for (let x = offsetX2 % spacing2; x < width + spacing2; x += spacing2) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+
+      // Distance-based fade
+      const dist = Math.abs(mouseX - x);
+      const alpha = Math.max(0.12, Math.min(0.5, 0.7 * (1 - dist / (width * 0.4))));
+      ctx.strokeStyle = `rgba(${baseColor}, ${alpha})`;
+      ctx.stroke();
+    }
+
+    // Horizontal lines
+    for (let y = offsetY2 % spacing2; y < height + spacing2; y += spacing2) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+
+      // Distance-based fade
+      const distY = Math.abs(mouseY - y);
+      const alpha = Math.max(0.12, Math.min(0.5, 0.6 * (1 - distY / (height * 0.3))));
+      ctx.strokeStyle = `rgba(${baseColor}, ${alpha})`;
+      ctx.stroke();
+    }
+
+    // 4. Highlight the hovered grid intersection (increased size and glow)
+    ctx.beginPath();
+    ctx.arc(mouseX, mouseY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${baseColor}, 0.85)`;
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = `rgb(${baseColor})`;
+    ctx.fill();
+    
+    // Reset shadow values for next cycles
+    ctx.shadowBlur = 0;
 
     requestAnimationFrame(draw);
   }
 
   draw();
 }
+
+// ==========================================================================
+// 12. EYE-CATCHING CURSOR PARTICLE TRAIL (LUMINA STYLE)
+// ==========================================================================
+
+function initCursorTrail() {
+  const isMobile = window.matchMedia("(max-width: 768px)").matches;
+  if (isMobile) return; // Disable on mobile/touch screens to save performance
+
+  window.addEventListener('mousemove', (e) => {
+    // Throttle particle creation slightly to maintain high fps
+    if (Math.random() > 0.35) return;
+
+    const particle = document.createElement('div');
+    particle.className = 'cursor-trail-dot';
+    
+    // Position at mouse coordinates
+    particle.style.left = `${e.clientX}px`;
+    particle.style.top = `${e.clientY}px`;
+    
+    // Slightly randomize dot sizes
+    const scale = Math.random() * 0.6 + 0.4;
+    particle.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    
+    const duration = Math.random() * 400 + 400; // 400ms - 800ms
+    particle.style.animation = `cursorTrailFade ${duration}ms cubic-bezier(0.1, 0.8, 0.3, 1) forwards`;
+
+    document.body.appendChild(particle);
+
+    setTimeout(() => {
+      particle.remove();
+    }, duration);
+  });
+}
+
+// Automatically trigger on page load
+document.addEventListener('DOMContentLoaded', () => {
+  initThemeSwitcher();
+  initCursorTrail();
+});
+
+// ==========================================================================
+// 13. DYNAMIC THEME SWITCHER (LIGHT/DARK)
+// ==========================================================================
+
+function initThemeSwitcher() {
+  const currentTheme = localStorage.getItem('theme') || 'light';
+  if (currentTheme === 'dark') {
+    document.documentElement.classList.add('dark');
+    document.documentElement.setAttribute('data-bs-theme', 'dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.setAttribute('data-bs-theme', 'light');
+  }
+  updateThemeToggleBtnUI();
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  if (html.classList.contains('dark')) {
+    html.classList.remove('dark');
+    html.setAttribute('data-bs-theme', 'light');
+    localStorage.setItem('theme', 'light');
+  } else {
+    html.classList.add('dark');
+    html.setAttribute('data-bs-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
+  }
+  updateThemeToggleBtnUI();
+}
+
+function updateThemeToggleBtnUI() {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  const isDark = document.documentElement.classList.contains('dark');
+  if (isDark) {
+    btn.innerHTML = `<i class="fas fa-sun text-yellow-400"></i> <span class="hidden sm:inline">Light Mode</span>`;
+  } else {
+    btn.innerHTML = `<i class="fas fa-moon text-indigo-400"></i> <span class="hidden sm:inline">Dark Mode</span>`;
+  }
+}
+
+// Expose theme switcher functions globally
+window.toggleTheme = toggleTheme;
+window.initThemeSwitcher = initThemeSwitcher;
+
