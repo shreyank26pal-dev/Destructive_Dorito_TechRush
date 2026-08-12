@@ -211,7 +211,7 @@ def create_step_up_challenge(
     if is_high_risk(payload.transaction):
         co_signer = get_active_co_signer(db, user.id)
         if co_signer:
-            approval_req = create_approval_request(db, user.id, co_signer, transaction_hash)
+            approval_req = create_approval_request(db, user.id, co_signer, transaction_hash, request=request)
             co_signer_request_id = approval_req.id
 
     return APIResponse(

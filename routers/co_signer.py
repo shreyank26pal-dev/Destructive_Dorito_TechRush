@@ -112,7 +112,7 @@ def get_active_co_signer(db: DBSession, primary_user_id: str) -> CoSigner | None
 
 
 def create_approval_request(
-    db: DBSession, primary_user_id: str, co_signer: CoSigner, transaction_hash: str
+    db: DBSession, primary_user_id: str, co_signer: CoSigner, transaction_hash: str, request: Request = None
 ) -> CoSignerApprovalRequest:
     """Used by routers/auth_entry.py right after creating a StepUpChallenge,
     when is_high_risk() and a registered co-signer both apply."""
@@ -126,7 +126,12 @@ def create_approval_request(
     db.commit()
     db.refresh(req)
 
-    approve_link = f"{ORIGIN}/co-signer/approve/{req.id}"
+    if request:
+        base_url = str(request.base_url).rstrip("/")
+    else:
+        base_url = ORIGIN.rstrip("/")
+
+    approve_link = f"{base_url}/co-signer/approve/{req.id}"
     send_email(
         to=co_signer.notify_email,
         subject="Approval needed for a high-value transaction",
@@ -163,7 +168,8 @@ def invite_co_signer(payload: CoSignerInviteRequest, request: Request, db: DBSes
     db.commit()
     db.refresh(co_signer)
 
-    invite_link = f"{ORIGIN}/co-signer/setup/{invite_token}"
+    base_url = str(request.base_url).rstrip("/")
+    invite_link = f"{base_url}/co-signer/setup/{invite_token}"
     send_email(
         to=payload.notify_email,
         subject="You've been added as a trusted co-signer",
