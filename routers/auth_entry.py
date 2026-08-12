@@ -169,7 +169,12 @@ def create_step_up_challenge(
         return _error(response, 404, "User not found")
 
     # Automatic Geolocation Firewall
-    client_ip = request.client.host if request.client else "unknown"
+    # Read client IP from X-Forwarded-For header to support deployed reverse proxies
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        client_ip = xff.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else "unknown"
     client_tz = request.headers.get("x-client-timezone", "")
     client_lang = request.headers.get("x-client-language", "")
     emulated_header = request.headers.get("x-emulated-country", "").upper()
