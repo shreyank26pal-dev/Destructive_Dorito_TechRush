@@ -183,6 +183,15 @@ async function checkAuthSession() {
       userBadge.classList.remove('hidden');
     }
 
+    const adminBtn = document.getElementById('nav-admin-btn');
+    if (adminBtn) {
+      if (currentUser.role === 'admin') {
+        adminBtn.classList.remove('hidden');
+      } else {
+        adminBtn.classList.add('hidden');
+      }
+    }
+
     if (path === '/' || path === '/index.html') {
       const authBanner = document.getElementById('auth-banner');
       if (authBanner) {

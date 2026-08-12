@@ -103,6 +103,7 @@ def get_current_user(request: Request) -> Optional[dict]:
             "email": user.email,
             "name": user.name,
             "is_verified": getattr(user, "is_verified", False),
+            "role": getattr(user, "role", "user"),
         }
     finally:
         db.close()
