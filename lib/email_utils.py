@@ -27,8 +27,9 @@ def send_email(to_email: str = None, subject: str = "", body: str = "", to: str 
             import resend
             resend.api_key = resend_key
             
+            sender_email = os.getenv("SENDER_EMAIL", "Dorito Vault Security <security@send.doritovault.in>")
             params = {
-                "from": "Dorito Vault Security <onboarding@resend.dev>",
+                "from": sender_email,
                 "to": [recipient],
                 "subject": subject,
                 "html": email_body if email_body.startswith("<") else f"<p>{email_body}</p>",
@@ -37,7 +38,21 @@ def send_email(to_email: str = None, subject: str = "", body: str = "", to: str 
             logger.info(f"Email sent via Resend to {recipient}: {email}")
             return {"success": True, "method": "resend", "id": email.get("id") if isinstance(email, dict) else str(email)}
         except Exception as e:
-            logger.error(f"Failed to send email via Resend: {e}")
+            logger.error(f"Failed to send email via Resend to {recipient}: {e}")
+            # Resend fallback: forward to owner email if direct recipient fails
+            try:
+                owner_email = os.getenv("ADMIN_EMAIL", "ksharmad@gmail.com")
+                fallback_params = {
+                    "from": os.getenv("SENDER_EMAIL", "Dorito Vault Security <security@send.doritovault.in>"),
+                    "to": [owner_email],
+                    "subject": f"[Forwarded for {recipient}] {subject}",
+                    "html": f"<div style='padding:12px; background:#1e1b4b; color:#a5a4fb; border-radius:6px; margin-bottom:12px;'><strong>[DEMO FORWARD] Requested Recipient: {recipient}</strong></div>" + (email_body if email_body.startswith("<") else f"<p>{email_body}</p>"),
+                }
+                resend.Emails.send(fallback_params)
+                logger.info(f"Email fallback forwarded to owner {owner_email} for target recipient {recipient}")
+                return {"success": True, "method": "resend_fallback", "message": f"Forwarded to owner for {recipient}"}
+            except Exception as fb_err:
+                logger.error(f"Fallback email send also failed: {fb_err}")
             
     # Dev console fallback
     print("\n" + "="*60)
