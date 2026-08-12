@@ -27,7 +27,7 @@ def send_email(to_email: str = None, subject: str = "", body: str = "", to: str 
             import resend
             resend.api_key = resend_key
             
-            sender_email = os.getenv("SENDER_EMAIL", "Dorito Vault Security <security@send.doritovault.in>")
+            sender_email = os.getenv("SENDER_EMAIL", "Dorito Vault Security <security@doritovault.in>")
             params = {
                 "from": sender_email,
                 "to": [recipient],
@@ -39,15 +39,30 @@ def send_email(to_email: str = None, subject: str = "", body: str = "", to: str 
             return {"success": True, "method": "resend", "id": email.get("id") if isinstance(email, dict) else str(email)}
         except Exception as e:
             logger.error(f"Failed to send email via Resend to {recipient}: {e}")
-            # Resend fallback: forward to owner email if direct recipient fails
+            # Try with onboarding sender as fallback
             try:
-                owner_email = os.getenv("ADMIN_EMAIL", "ksharmad@gmail.com")
                 fallback_params = {
-                    "from": os.getenv("SENDER_EMAIL", "Dorito Vault Security <security@send.doritovault.in>"),
-                    "to": [owner_email],
-                    "subject": f"[Forwarded for {recipient}] {subject}",
-                    "html": f"<div style='padding:12px; background:#1e1b4b; color:#a5a4fb; border-radius:6px; margin-bottom:12px;'><strong>[DEMO FORWARD] Requested Recipient: {recipient}</strong></div>" + (email_body if email_body.startswith("<") else f"<p>{email_body}</p>"),
+                    "from": "Dorito Vault Security <onboarding@resend.dev>",
+                    "to": [recipient],
+                    "subject": subject,
+                    "html": email_body if email_body.startswith("<") else f"<p>{email_body}</p>",
                 }
+                resend.Emails.send(fallback_params)
+                return {"success": True, "method": "resend_onboarding"}
+            except Exception as fb_err:
+                # Secondary fallback: forward to owner email
+                try:
+                    owner_email = os.getenv("ADMIN_EMAIL", "ksharmad@gmail.com")
+                    owner_params = {
+                        "from": "Dorito Vault Security <onboarding@resend.dev>",
+                        "to": [owner_email],
+                        "subject": f"[Forwarded for {recipient}] {subject}",
+                        "html": f"<div style='padding:12px; background:#1e1b4b; color:#a5a4fb; border-radius:6px; margin-bottom:12px;'><strong>[DEMO FORWARD] Requested Recipient: {recipient}</strong></div>" + (email_body if email_body.startswith("<") else f"<p>{email_body}</p>"),
+                    }
+                    resend.Emails.send(owner_params)
+                    return {"success": True, "method": "resend_owner_forward"}
+                except Exception:
+                    pass
                 resend.Emails.send(fallback_params)
                 logger.info(f"Email fallback forwarded to owner {owner_email} for target recipient {recipient}")
                 return {"success": True, "method": "resend_fallback", "message": f"Forwarded to owner for {recipient}"}
