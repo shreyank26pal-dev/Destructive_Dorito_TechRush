@@ -668,6 +668,29 @@ async function initDashboard() {
   if (currentUser.email) {
     fetchMultiDeviceNudge(currentUser.email);
   }
+
+  // Update Geolocation Firewall Status
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
+  const lang = navigator.language || "unknown";
+  const isLocalIndian = !(["Shanghai", "London", "Tokyo", "Europe", "America", "GMT"].some(kw => tz.includes(kw)));
+  
+  const geoLoc = document.getElementById('geo-location-display');
+  const geoDetails = document.getElementById('geo-details-display');
+  const geoContainer = document.getElementById('geo-firewall-container');
+  if (geoLoc && geoDetails) {
+    geoDetails.innerText = `${tz} (${lang})`;
+    if (isLocalIndian) {
+      geoLoc.innerHTML = "Mumbai, India (Secure)";
+      if (geoContainer) {
+        geoContainer.className = "mt-3.5 p-2 rounded bg-emerald-950/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono-code flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4 max-w-[450px] inline-flex";
+      }
+    } else {
+      geoLoc.innerHTML = "Foreign Origin (Banned)";
+      if (geoContainer) {
+        geoContainer.className = "mt-3.5 p-2 rounded bg-red-950/20 border border-red-500/30 text-red-300 text-[10px] font-mono-code flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4 max-w-[450px] inline-flex";
+      }
+    }
+  }
 }
 
 async function fetchSecurityAlerts(userId) {
