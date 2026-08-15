@@ -559,10 +559,10 @@ As a **hackathon prototype**, the following hardening steps are recommended befo
 **Hackathon:** TechRush
 
 ### Contributors
-- Sharmad Kulkarni
-- Shreyank Pal
-- Sujal Dhonsale
 
+- **Sujal Dhonsale** — [GitHub](https://github.com/SujalD77) · [LinkedIn](https://www.linkedin.com/in/sujal-dhonsale-42400237a/)
+- **Shreyank Pal** — [GitHub](https://github.com/shreyank26pal-dev) · [LinkedIn](https://www.linkedin.com/in/shreyank-pal-648b79260/)
+- **Sharmad Kulkarni** — [GitHub](https://github.com/sKing16167) · [LinkedIn](https://www.linkedin.com/in/sharmad-kulkarni-99a501366/)
 ---
 
 ## License
