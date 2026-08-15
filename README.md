@@ -117,33 +117,33 @@ Vulnerable or elderly users can delegate transaction authorization. When a high-
 
 ```mermaid
 flowchart TD
-    A[User Browser] -->|Jinja2 UI + Custom Tailwind CSS| B[Web Interface]
-    B -->|FastAPI Server| C[Application Backend]
+    A["User Browser"] -->|HTML / Tailwind / Vanilla JS| B["Web Interface"]
+    B -->|FastAPI Server| C["Application Backend"]
 
-    C --> D[Entry Router (auth_entry.py)]
-    C --> E[Security Router (security.py)]
-    C --> F[Session Router (sessions.py)]
-    C --> G[Co-Signer Router (co_signer.py)]
+    C --> D["Entry Router (auth_entry.py)"]
+    C --> E["Security Router (security.py)"]
+    C --> F["Session Router (sessions.py)"]
+    C --> G["Co-Signer Router (co_signer.py)"]
 
-    D --> H[Device Fingerprinting]
-    D --> I[Lockout & Alerts]
-    D --> J[Automatic Geolocation Firewall]
+    D --> H["Device Fingerprinting"]
+    D --> I["Lockout & Alerts"]
+    D --> J["Automatic Geolocation Firewall"]
 
-    E --> K[WebAuthn Passkeys]
-    E --> L[Hashed Email OTPs]
-    E --> M[QR Cross-Device Login]
-    E --> N[Step-Up verification]
+    E --> K["WebAuthn Passkeys"]
+    E --> L["Hashed Email OTPs"]
+    E --> M["QR Cross-Device Login"]
+    E --> N["Step-Up Verification"]
 
-    G --> O[Co-Signer Invites]
-    G --> P[Co-Signer WebAuthn Registration]
-    G --> Q[Delegated Transaction Approval]
+    G --> O["Co-Signer Invites"]
+    G --> P["Co-Signer WebAuthn Registration"]
+    G --> Q["Delegated Transaction Approval"]
 
-    F --> R[Session Management & Revocation]
-    F --> S[Login History & Geolocation Lookup]
-    F --> T[Role-Gated Admin Portal & Audit Log]
+    F --> R["Session Management & Revocation"]
+    F --> S["Login History & Geolocation Lookup"]
+    F --> T["Role-Gated Admin Portal & Audit Log"]
 
-    C --> U[SQLAlchemy 2.0 ORM]
-    U --> V[(Supabase PostgreSQL / SQLite)]
+    C --> U["SQLAlchemy 2.0 ORM"]
+    U --> V[("Supabase PostgreSQL / SQLite")]
 ```
 
 ### Backend Structure
