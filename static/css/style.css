@@ -184,22 +184,54 @@ body::before {
 }
 
 .intro-vault-ring {
-  width: 110px;
-  height: 110px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  border: 3px solid rgba(13, 110, 253, 0.25);
-  border-top-color: var(--bs-primary);
+  border: 3px solid rgba(16, 185, 129, 0.25);
+  border-top-color: #10b981;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: bsSpinner 1.2s linear infinite;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.35);
+  animation: bsSpinner 2s linear infinite;
 }
+
+.dorito-spinner-wrapper {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 600px;
+}
+
+.dorito-spinner-img {
+  width: 100%;
+  height: 100%;
+  animation: doritoSymmetricalAxisSpin 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  filter: drop-shadow(0 4px 16px rgba(16, 185, 129, 0.5));
+  transform-style: preserve-3d;
+}
+
+@keyframes doritoSymmetricalAxisSpin {
+  0% {
+    transform: rotateY(0deg) scale(1);
+  }
+  50% {
+    transform: rotateY(180deg) scale(1.12);
+  }
+  100% {
+    transform: rotateY(360deg) scale(1);
+  }
+}
+
 
 @keyframes bsSpinner {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
 
 /* ==========================================================================
    BOOTSTRAP CARDS & INPUTS
@@ -674,7 +706,7 @@ body, p, label, span, td, th, input, button {
   color: #fca5a5 !important;
 }
 
-/* ABSOLUTE FORCE OVERRIDE FOR INPUT TEXT AND PLACEHOLDERS TO BE BLACK ON WHITE BACKGROUNDS */
+/* ABSOLUTE FORCE OVERRIDE FOR INPUT TEXT AND PLACEHOLDERS TO BE DARK SLATE GREY WITH CRISP WHITE TYPED TEXT */
 input, select, textarea,
 .bs-input,
 input.bs-input,
@@ -683,9 +715,11 @@ input.bs-input,
 .dark textarea,
 .dark .bs-input,
 .dark input.bs-input {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  -webkit-text-fill-color: #000000 !important;
+  background-color: #171b26 !important;
+  border: 1px solid var(--bs-border-color) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-radius: 12px !important;
 }
 
 input::placeholder,
@@ -694,19 +728,29 @@ textarea::placeholder,
 .dark input::placeholder,
 .dark textarea::placeholder,
 .dark .bs-input::placeholder {
-  color: #000000 !important;
-  -webkit-text-fill-color: #000000 !important;
-  opacity: 0.65 !important;
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  opacity: 0.85 !important;
 }
 
-/* Force autofill states to also be white background and black text */
+input:focus, select:focus, textarea:focus,
+.bs-input:focus, input.bs-input:focus {
+  background-color: #1a1f2e !important;
+  border-color: var(--bs-primary) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+}
+
+/* Force Android Chrome autofill states to be dark slate grey background and white text */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
 .bs-input:-webkit-autofill,
 .bs-input:-webkit-autofill:hover,
 .bs-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #000000 !important;
-  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
-  box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #171b26 inset !important;
+  box-shadow: 0 0 0px 1000px #171b26 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
+

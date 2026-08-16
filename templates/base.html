@@ -22,6 +22,15 @@
 
   <title>{% block title %}Dorito Vault — Passwordless Security Core{% endblock %}</title>
 
+  <!-- Website Favicons for Chrome, Edge, Safari & Mobile Tabs -->
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=16.0" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico?v=16.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=16.0" />
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=16.0" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png?v=16.0" />
+  <meta property="og:image" content="/favicon.png?v=16.0" />
+
+
   <!-- Google Fonts, Tailwind CSS & FontAwesome -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -75,25 +84,25 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <!-- Custom Natural Bootstrap Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/style.css?v=14.0" />
 </head>
 <body class="flex flex-col min-h-screen selection:bg-blue-600 selection:text-white">
 
-  <!-- FIRST-LOAD WEBSITE ENTRY ANIMATION OVERLAY -->
+  <!-- FIRST-LOAD WEBSITE ENTRY ANIMATION OVERLAY (ROTATING DORITO CHIP) -->
   <div id="intro-overlay">
     <div class="text-center space-y-5 px-4">
-      <div class="intro-vault-ring mx-auto">
-        <div class="relative w-14 h-14 flex items-center justify-center">
-          <i class="fas fa-shield-cat text-blue-500 text-3xl"></i>
+      <div class="intro-vault-ring mx-auto flex items-center justify-center">
+        <div class="dorito-spinner-wrapper">
+          <img src="/static/favicon.svg" alt="Dorito Chip" class="dorito-spinner-img" />
         </div>
       </div>
       <div>
         <h1 class="text-3xl font-bold font-heading text-white tracking-tight">Dorito Vault</h1>
-        <p class="text-xs font-mono-code text-blue-400 mt-1 uppercase">Passwordless Security Core</p>
+        <p class="text-xs font-mono-code text-blue-400 mt-1 uppercase tracking-widest">Passwordless Security Core</p>
       </div>
       <div class="flex items-center justify-center gap-2 text-xs font-mono-code text-gray-400">
-        <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-        <span id="intro-status-text">INITIALIZING SECURE VAULT...</span>
+        <span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+        <span id="intro-status-text">INITIALIZING SECURE ENCLAVE...</span>
       </div>
     </div>
   </div>

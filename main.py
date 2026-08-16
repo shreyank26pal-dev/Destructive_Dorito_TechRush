@@ -6,8 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -76,6 +76,18 @@ def dashboard_page(request: Request):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico():
+    return FileResponse("static/favicon.ico", media_type="image/x-icon")
+
+
+@app.get("/favicon.png", include_in_schema=False)
+def favicon_png():
+    return FileResponse("static/favicon.png", media_type="image/png")
+
+
 
 
 @app.get("/test/security", response_class=HTMLResponse)
@@ -188,3 +200,8 @@ def admin_dashboard_page(request: Request):
     relies on client-side /api/sessions/me rather than a server-side check.
     """
     return templates.TemplateResponse("admin_dashboard.html", {"request": request})
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
