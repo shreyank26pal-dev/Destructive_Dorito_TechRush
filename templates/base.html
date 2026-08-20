@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    // Fast inline script to prevent theme flash
+    (function() {
+      const theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.setAttribute('data-bs-theme', 'light');
+      }
+    })();
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <title>{% block title %}Dorito Vault — Passwordless Security Core{% endblock %}</title>
+
+  <!-- Website Favicons for Chrome, Edge, Safari & Mobile Tabs -->
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=16.0" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico?v=16.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=16.0" />
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=16.0" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png?v=16.0" />
+  <meta property="og:image" content="/favicon.png?v=16.0" />
+
+
+  <!-- Google Fonts, Tailwind CSS & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Impeccable Warm Editorial Palette: cream surfaces + terracotta accents.
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+            serif: ['Fraunces', 'Georgia', 'serif'],
+          },
+          colors: {
+            gray: {
+              50:  'var(--gray-50)',
+              100: 'var(--gray-100)',
+              200: 'var(--gray-200)',
+              300: 'var(--gray-300)',
+              400: 'var(--gray-400)',
+              500: 'var(--gray-500)',
+              600: 'var(--gray-600)',
+              700: 'var(--gray-700)',
+              800: 'var(--gray-800)',
+              900: 'var(--gray-900)',
+              950: 'var(--gray-950)',
+            },
+            blue: {
+              50:  'var(--blue-50)',
+              100: 'var(--blue-100)',
+              200: 'var(--blue-200)',
+              300: 'var(--blue-300)',
+              400: 'var(--blue-400)',
+              500: 'var(--blue-500)',
+              600: 'var(--blue-600)',
+              700: 'var(--blue-700)',
+              800: 'var(--blue-800)',
+              900: 'var(--blue-900)',
+              950: 'var(--blue-950)',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- QRCode.js library for rendering QR codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Custom Natural Bootstrap Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css?v=14.0" />
+</head>
+<body class="flex flex-col min-h-screen selection:bg-blue-600 selection:text-white">
+
+  <!-- FIRST-LOAD WEBSITE ENTRY ANIMATION OVERLAY (ROTATING DORITO CHIP) -->
+  <div id="intro-overlay">
+    <div class="text-center space-y-5 px-4">
+      <div class="intro-vault-ring mx-auto flex items-center justify-center">
+        <div class="dorito-spinner-wrapper">
+          <img src="/static/favicon.svg" alt="Dorito Chip" class="dorito-spinner-img" />
+        </div>
+      </div>
+      <div>
+        <h1 class="text-3xl font-bold font-heading text-white tracking-tight">Dorito Vault</h1>
+        <p class="text-xs font-mono-code text-blue-400 mt-1 uppercase tracking-widest">Passwordless Security Core</p>
+      </div>
+      <div class="flex items-center justify-center gap-2 text-xs font-mono-code text-gray-400">
+        <span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+        <span id="intro-status-text">INITIALIZING SECURE ENCLAVE...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Background Canvas -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- Navigation Header (Clean Bootstrap Navbar Style) -->
+  <header class="border-b border-gray-800 bg-gray-900/90 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+          <i class="fas fa-play text-white text-xs transform -rotate-90"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-bold text-white tracking-tight">Dorito Vault</span>
+            <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold font-mono-code border border-blue-500/30">FIDO2</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Right Nav Items -->
+      <div class="flex items-center gap-3">
+        <!-- Hardware Badge -->
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-md bg-gray-800 border border-gray-700 text-xs text-gray-300">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          <i class="fas fa-fingerprint text-blue-400"></i>
+          <span class="text-gray-400 text-[11px]">Hardware ID:</span>
+          <span id="fp-display" class="font-mono-code text-white text-[11px] font-semibold">computing...</span>
+        </div>
+
+        <!-- Theme Toggle Button -->
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Switch Visual Theme" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold transition-all cursor-pointer">
+          <i class="fas fa-moon text-indigo-400"></i>
+          <span class="hidden sm:inline">Dark Mode</span>
+        </button>
+
+        <!-- Approve QR Button -->
+        <button onclick="openQrApprovalModal()" title="Approve QR Sign-in" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold transition-all cursor-pointer">
+          <i class="fas fa-qrcode text-blue-400"></i>
+          <span class="text-xs font-medium">Approve QR</span>
+        </button>
+
+        <!-- User Profile Menu -->
+        <div id="nav-user-badge" class="hidden flex items-center gap-2 pl-3 border-l border-gray-800">
+          <a id="nav-admin-btn" href="/admin" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 text-purple-200 text-xs font-bold transition-all">
+            <i class="fas fa-shield-cat text-purple-400"></i>
+            <span>Admin Portal</span>
+          </a>
+          <a href="/dashboard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all">
+            <i class="fas fa-user-shield text-xs"></i>
+            <span id="nav-user-name">User</span>
+          </a>
+          <button onclick="handleLogout()" title="Sign Out Session" class="p-1.5 rounded-md bg-gray-800 hover:bg-red-600/20 border border-gray-700 text-gray-400 hover:text-red-400 text-xs transition-all">
+            <i class="fas fa-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Touch-Friendly QR APPROVAL MODAL -->
+  <div id="qr-approve-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-qrcode text-blue-400 text-xl"></i>
+          <h3 class="text-base font-bold text-white">Approve Mobile QR Sign-In</h3>
+        </div>
+        <button onclick="closeQrApprovalModal()" class="text-gray-400 hover:text-white p-1"><i class="fas fa-times text-lg"></i></button>
+      </div>
+      <p class="text-xs text-gray-300">Enter or paste the 32-character QR Token displayed on the secondary device to authorize its sign-in:</p>
+      <div>
+        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">QR Token</label>
+        <input type="text" id="qr-token-input" placeholder="Paste QR token here..." class="w-full px-3 py-2.5 bs-input text-xs font-mono-code focus:outline-none" />
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button onclick="closeQrApprovalModal()" class="px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-300">Cancel</button>
+        <button onclick="submitQrApproval()" class="px-4 py-2 rounded btn-bs-primary text-xs font-bold text-white flex items-center gap-1.5">
+          <i class="fas fa-check"></i> Authorize Device
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main View Container -->
+  <main class="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-10 relative z-10">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-800 bg-gray-900/90 py-5 text-center text-xs text-gray-400 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+        <p>&copy; 2026 Dorito Vault. Passwordless Security Core.</p>
+      </div>
+      <div class="flex items-center gap-4 text-gray-400 font-mono-code text-[11px]">
+        <span class="text-blue-400"><i class="fas fa-shield-cat"></i> WebAuthn</span>
+        <span class="text-emerald-400"><i class="fas fa-key"></i> Hashed OTP</span>
+        <span class="text-gray-300"><i class="fas fa-qrcode"></i> Mobile Sync</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

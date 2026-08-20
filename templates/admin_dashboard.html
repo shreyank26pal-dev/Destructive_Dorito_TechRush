@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — Security Operations · Dorito Vault{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-7xl mx-auto space-y-6">
+
+  <!-- Header -->
+  <div class="bs-card p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+        <i class="fas fa-user-shield text-xl"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-xl font-bold text-white tracking-tight">Admin — Security Operations</h1>
+          <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold font-mono-code border border-blue-500/30">ADMIN ONLY</span>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Cross-user authentication audit and sensitive-action monitoring.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs">
+      <i class="fas fa-circle-info"></i>
+      <span>This view never displays raw or hashed IP addresses — only resolved city/country.</span>
+    </div>
+  </div>
+
+  <!-- Access denied state (hidden by default) -->
+  <div id="admin-denied" class="bs-card p-10 rounded-2xl text-center hidden">
+    <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-red-500/15 border border-red-500/40 flex items-center justify-center text-red-400">
+      <i class="fas fa-lock text-2xl"></i>
+    </div>
+    <h2 class="text-lg font-bold text-white">Admin access required</h2>
+    <p class="text-sm text-gray-400 mt-2 max-w-md mx-auto">
+      Your account doesn't have admin privileges. If you believe this is a mistake, contact your team.
+    </p>
+    <a href="/dashboard" class="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold transition-all">
+      <i class="fas fa-arrow-left text-blue-400"></i> Back to dashboard
+    </a>
+  </div>
+
+  <!-- Main admin content (hidden until access confirmed) -->
+  <div id="admin-content" class="space-y-6 hidden">
+
+    <!-- Authentication Audit Log -->
+    <div class="bs-card rounded-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
+        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fas fa-list-check text-blue-400"></i> Authentication Audit Log
+          <span class="text-[11px] font-normal text-gray-400">— all users</span>
+        </h2>
+        <div class="flex items-center gap-3">
+          <select id="audit-limit" class="bs-input text-xs py-1.5 px-2">
+            <option value="50">Last 50</option>
+            <option value="100" selected>Last 100</option>
+            <option value="200">Last 200</option>
+          </select>
+          <button id="btn-refresh-audit" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold transition-all">
+            <i class="fas fa-arrows-rotate text-blue-400"></i> Refresh
+          </button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-800">
+              <th class="px-5 py-3 font-semibold">User ID</th>
+              <th class="px-5 py-3 font-semibold">Method</th>
+              <th class="px-5 py-3 font-semibold">Status</th>
+              <th class="px-5 py-3 font-semibold">Device</th>
+              <th class="px-5 py-3 font-semibold">Location</th>
+              <th class="px-5 py-3 font-semibold">Timestamp (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="audit-table-body" class="divide-y divide-gray-800/70"></tbody>
+        </table>
+        <div id="audit-empty" class="px-5 py-10 text-center text-gray-400 text-sm hidden">
+          <i class="fas fa-inbox text-2xl text-gray-600 mb-2 block"></i>
+          No login attempts recorded yet.
+        </div>
+      </div>
+    </div>
+
+    <!-- Sensitive Actions -->
+    <div class="bs-card rounded-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
+        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fas fa-shield-halved text-amber-400"></i> Sensitive Actions
+          <span class="text-[11px] font-normal text-gray-400">— step-up authenticated events, all users</span>
+        </h2>
+        <button id="btn-refresh-sensitive" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-semibold transition-all">
+          <i class="fas fa-arrows-rotate text-blue-400"></i> Refresh
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-800">
+              <th class="px-5 py-3 font-semibold">User ID</th>
+              <th class="px-5 py-3 font-semibold">Completed</th>
+              <th class="px-5 py-3 font-semibold">Created At (UTC)</th>
+              <th class="px-5 py-3 font-semibold">Expires At (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="sensitive-table-body" class="divide-y divide-gray-800/70"></tbody>
+        </table>
+        <div id="sensitive-empty" class="px-5 py-10 text-center text-gray-400 text-sm hidden">
+          <i class="fas fa-inbox text-2xl text-gray-600 mb-2 block"></i>
+          No sensitive actions recorded yet.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  function statusPill(success) {
+    return success
+      ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold"><i class="fas fa-check text-[9px]"></i> SUCCESS</span>'
+      : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] font-bold"><i class="fas fa-xmark text-[9px]"></i> FAILURE</span>';
+  }
+
+  function completedPill(completed) {
+    return completed
+      ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">YES</span>'
+      : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-300 border border-gray-600 text-[10px] font-bold">PENDING</span>';
+  }
+
+  function shortId(id) {
+    return id ? '<span class="font-mono-code text-gray-300">' + id.slice(0, 8) + '…</span>' : '<span class="text-gray-500">—</span>';
+  }
+
+  function location(city, country) {
+    if (city && country) return city + ', ' + country;
+    if (country) return country;
+    return '<span class="text-gray-500">Unavailable</span>';
+  }
+
+  async function loadAuditLog() {
+    const limit = document.getElementById('audit-limit').value;
+    const res = await fetch('/api/sessions/admin/audit-log?limit=' + limit);
+    if (res.status === 403 || res.status === 401) return showDenied();
+    const json = await res.json();
+    if (json.status !== 'success') return;
+
+    const tbody = document.getElementById('audit-table-body');
+    const empty = document.getElementById('audit-empty');
+    tbody.innerHTML = '';
+    if (!json.data.length) {
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    json.data.forEach((row) => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-800/40 transition-colors';
+      tr.innerHTML =
+        '<td class="px-5 py-3">' + shortId(row.user_id) + '</td>' +
+        '<td class="px-5 py-3 text-gray-300 font-mono-code">' + row.method + '</td>' +
+        '<td class="px-5 py-3">' + statusPill(row.success) + '</td>' +
+        '<td class="px-5 py-3 text-gray-300">' + (row.device_info || '<span class="text-gray-500">Unknown</span>') + '</td>' +
+        '<td class="px-5 py-3 text-gray-300">' + location(row.city, row.country) + '</td>' +
+        '<td class="px-5 py-3 text-gray-400 font-mono-code">' + row.created_at.replace('T', ' ').slice(0, 19) + '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function loadSensitiveActions() {
+    const res = await fetch('/api/sessions/admin/sensitive-actions?limit=100');
+    if (res.status === 403 || res.status === 401) return showDenied();
+    const json = await res.json();
+    if (json.status !== 'success') return;
+
+    const tbody = document.getElementById('sensitive-table-body');
+    const empty = document.getElementById('sensitive-empty');
+    tbody.innerHTML = '';
+    if (!json.data.length) {
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    json.data.forEach((row) => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-800/40 transition-colors';
+      tr.innerHTML =
+        '<td class="px-5 py-3">' + shortId(row.user_id) + '</td>' +
+        '<td class="px-5 py-3">' + completedPill(row.completed) + '</td>' +
+        '<td class="px-5 py-3 text-gray-400 font-mono-code">' + row.created_at.replace('T', ' ').slice(0, 19) + '</td>' +
+        '<td class="px-5 py-3 text-gray-400 font-mono-code">' + row.expires_at.replace('T', ' ').slice(0, 19) + '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function showDenied() {
+    document.getElementById('admin-content').classList.add('hidden');
+    document.getElementById('admin-denied').classList.remove('hidden');
+  }
+
+  function showContent() {
+    document.getElementById('admin-denied').classList.add('hidden');
+    document.getElementById('admin-content').classList.remove('hidden');
+  }
+
+  document.getElementById('btn-refresh-audit').addEventListener('click', loadAuditLog);
+  document.getElementById('audit-limit').addEventListener('change', loadAuditLog);
+  document.getElementById('btn-refresh-sensitive').addEventListener('click', loadSensitiveActions);
+
+  // Initial load — a successful audit-log fetch also confirms admin access.
+  (async function init() {
+    const res = await fetch('/api/sessions/admin/audit-log?limit=100');
+    if (res.status === 403 || res.status === 401) {
+      showDenied();
+      return;
+    }
+    showContent();
+    loadAuditLog();
+    loadSensitiveActions();
+  })();
+})();
+</script>
+{% endblock %}

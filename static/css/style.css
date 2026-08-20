@@ -1,0 +1,756 @@
+/* ==========================================================================
+   DORITO VAULT — PREMIUM PASSWORDLESS SECURITY DESIGN SYSTEM
+   Aesthetic: dark navy near-black fintech security portal
+   Palette: Body #0a0e1a, Surface #101627, Elevated #171d30,
+            Primary blue-purple #4f46e5, Trusted teal #10b981,
+            Warning amber #f59e0b, Alert red #ef4444, Muted slate #626f92
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Tailwind Color Scale Variables (Light Mode) */
+  --gray-50:  #0d0c0a;
+  --gray-100: #1a1714;
+  --gray-200: #26211c;
+  --gray-300: #1f1a15;
+  --gray-400: #5b4f44;
+  --gray-500: #75685a;
+  --gray-600: #9c8e7e;
+  --gray-700: #cfc4b2;
+  --gray-800: #e6dccb;
+  --gray-900: #f4ebdc;
+  --gray-950: #faf6ef;
+
+  --blue-50:  #4a1a09;
+  --blue-100: #6e270e;
+  --blue-200: #943513;
+  --blue-300: #a8431f;
+  --blue-400: #c8552b;
+  --blue-500: #c8552b;
+  --blue-600: #a8431f;
+  --blue-700: #ffd6bd;
+  --blue-800: #ffede0;
+  --blue-900: #fff5f0;
+  --blue-950: #ffffff;
+
+  /* Bootstrap Variable Mappings (Light Mode) */
+  --bs-body-bg: #faf6ef;
+  --bs-card-bg: #f4ebdc;
+  --bs-card-cap-bg: #e6dccb;
+  --bs-input-bg: #ffffff;
+  --bs-border-color: #e6dccb;
+  --bs-border-color-translucent: rgba(91, 79, 68, 0.08);
+
+  --bs-primary: #c8552b;
+  --bs-primary-hover: #a8431f;
+  --bs-primary-rgb: 200, 85, 43;
+
+  --bs-success: #1d7b5c;
+  --bs-success-hover: #155d45;
+
+  --bs-danger: #b33939;
+  --bs-warning: #d18f1f;
+  --bs-info: #2d7099;
+
+  --bs-body-color: #1f1a15;
+  --bs-secondary-color: #5b4f44;
+  --bs-heading-color: #1f1a15;
+
+  --bs-border-radius: 12px;
+  --bs-border-radius-lg: 20px;
+  --bs-border-radius-sm: 8px;
+}
+
+.dark {
+  /* Tailwind Color Scale Variables (Dark Mode: Charcoal Grey and Matrix Green) */
+  --gray-50:  #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db; /* Light gray text for dark mode */
+  --gray-400: #9ca3af; /* Muted gray text */
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #2b2e3b; /* Dark lines / borders */
+  --gray-900: #15171e; /* Dark card background */
+  --gray-950: #0d0e12; /* Dark page background */
+
+  --blue-50:  #ffffff;
+  --blue-100: #d1fae5;
+  --blue-200: #a7f3d0;
+  --blue-300: #6ee7b7;
+  --blue-400: #10b981; /* Primary green accent text */
+  --blue-500: #10b981; /* Primary green */
+  --blue-600: #059669; /* Primary green button background */
+  --blue-700: #047857;
+  --blue-800: #065f46;
+  --blue-900: #064e3b;
+  --blue-950: #022c22;
+
+  /* Bootstrap Variable Mappings (Dark Mode) */
+  --bs-body-bg: #0d0e12;
+  --bs-card-bg: #15171e;
+  --bs-card-cap-bg: #1f222d;
+  --bs-input-bg: #0f1015;
+  --bs-border-color: #2b2e3b;
+  --bs-border-color-translucent: rgba(16, 185, 129, 0.08);
+
+  --bs-primary: #10b981;
+  --bs-primary-hover: #059669;
+  --bs-primary-rgb: 16, 185, 129;
+
+  --bs-success: #10b981;
+  --bs-success-hover: #059669;
+
+  --bs-danger: #ef4444;
+  --bs-warning: #f59e0b;
+  --bs-info: #3b82f6;
+
+  --bs-body-color: #d1d5db;
+  --bs-secondary-color: #9ca3af;
+  --bs-heading-color: #f9fafb;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background-color: var(--bs-body-bg);
+}
+
+body {
+  width: 100%;
+  min-height: 100vh;
+  background-color: transparent !important;
+  color: var(--bs-body-color);
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+  line-height: 1.55;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Layered radial glow for depth behind the security portal surfaces */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 40rem at 15% -10%, rgba(246, 223, 203, 0.45), transparent 65%),
+    radial-gradient(50rem 40rem at 100% 0%, rgba(200, 85, 43, 0.05), transparent 60%);
+}
+
+/* Background Canvas */
+#bg-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.font-mono-code {
+  font-family: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ==========================================================================
+   FIRST-LOAD INTRO ANIMATION OVERLAY (BOOTSTRAP STYLE)
+   ========================================================================== */
+#intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: var(--bs-body-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+#intro-overlay.fade-out {
+  opacity: 0;
+  transform: scale(0.98);
+  pointer-events: none;
+}
+
+.intro-vault-ring {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 3px solid rgba(16, 185, 129, 0.25);
+  border-top-color: #10b981;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.35);
+  animation: bsSpinner 2s linear infinite;
+}
+
+.dorito-spinner-wrapper {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 600px;
+}
+
+.dorito-spinner-img {
+  width: 100%;
+  height: 100%;
+  animation: doritoSymmetricalAxisSpin 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  filter: drop-shadow(0 4px 16px rgba(16, 185, 129, 0.5));
+  transform-style: preserve-3d;
+}
+
+@keyframes doritoSymmetricalAxisSpin {
+  0% {
+    transform: rotateY(0deg) scale(1);
+  }
+  50% {
+    transform: rotateY(180deg) scale(1.12);
+  }
+  100% {
+    transform: rotateY(360deg) scale(1);
+  }
+}
+
+
+@keyframes bsSpinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
+/* ==========================================================================
+   BOOTSTRAP CARDS & INPUTS
+   ========================================================================== */
+.bs-card {
+  background-color: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius-lg);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 10px 30px -12px rgba(0, 0, 0, 0.7);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.bs-card:hover {
+  border-color: rgba(139, 134, 247, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 18px 40px -14px rgba(0, 0, 0, 0.8);
+}
+
+.bs-input {
+  background-color: #ffffff !important;
+  border: 1px solid var(--bs-border-color) !important;
+  color: #000000 !important;
+  border-radius: var(--bs-border-radius-sm);
+  font-size: 0.9rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+/* Ensure inputs with left padding utility classes are not overridden by bs-input shorthand */
+.bs-input.pl-9 {
+  padding-left: 2.25rem !important; /* Matches Tailwind's pl-9 (36px) */
+}
+.bs-input.pl-8 {
+  padding-left: 2rem !important;
+}
+.bs-input.pl-7 {
+  padding-left: 1.75rem !important; /* Matches Tailwind's pl-7 (28px) */
+}
+
+/* Browser Autofill Overrides */
+.bs-input:-webkit-autofill,
+.bs-input:-webkit-autofill:hover,
+.bs-input:-webkit-autofill:focus,
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #000000 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.bs-input::placeholder {
+  color: #000000 !important;
+  opacity: 0.65 !important;
+}
+
+.bs-input:focus {
+  outline: none;
+  background-color: #ffffff !important;
+  border-color: var(--bs-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.28) !important;
+  color: #000000 !important;
+}
+
+/* Ensure absolute input prefix icons and symbols are solid dark/black */
+.relative span.pointer-events-none,
+.relative span.pointer-events-none i {
+  color: #000000 !important;
+  opacity: 0.95 !important;
+}
+
+/* ==========================================================================
+   NATURAL BOOTSTRAP BUTTONS
+   ========================================================================== */
+.btn-bs-primary {
+  background-image: linear-gradient(180deg, #5a52ea 0%, var(--bs-primary) 100%);
+  border: 1px solid rgba(139, 134, 247, 0.5);
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: var(--bs-border-radius-sm);
+  padding: 0.65rem 1.25rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px -8px rgba(var(--bs-primary-rgb), 0.7);
+}
+
+.btn-bs-primary:hover {
+  filter: brightness(1.08);
+  border-color: rgba(165, 164, 251, 0.7);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -8px rgba(var(--bs-primary-rgb), 0.85);
+}
+
+.btn-bs-primary:active { transform: translateY(0); }
+
+.btn-bs-success {
+  background-image: linear-gradient(180deg, #16c98d 0%, var(--bs-success) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  color: #04231a;
+  font-weight: 700;
+  border-radius: var(--bs-border-radius-sm);
+  padding: 0.65rem 1.25rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(16, 185, 129, 0.6);
+}
+
+.btn-bs-success:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -8px rgba(16, 185, 129, 0.75);
+}
+
+.btn-bs-success:active { transform: translateY(0); }
+
+.btn-bs-secondary {
+  background-color: #1a2138;
+  border: 1px solid var(--bs-border-color);
+  color: #c9cedd;
+  font-weight: 600;
+  border-radius: var(--bs-border-radius-sm);
+  padding: 0.65rem 1.25rem;
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-bs-secondary:hover {
+  background-color: #232a41;
+  border-color: rgba(139, 134, 247, 0.35);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Biometric Scanner Visualizer Widget (Bootstrap Style) */
+.scanner-hud {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, rgba(200, 85, 43, 0.15), rgba(200, 85, 43, 0.03) 70%) !important;
+  border: 2px solid rgba(200, 85, 43, 0.3) !important;
+  box-shadow: 0 0 0 6px rgba(200, 85, 43, 0.05), inset 0 0 20px rgba(200, 85, 43, 0.1) !important;
+}
+
+.scanner-laser {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  width: 80%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--bs-primary), transparent);
+  box-shadow: 0 0 12px var(--bs-primary);
+  animation: laserScan 2s infinite ease-in-out;
+}
+
+/* Executive Bank Account Card Motif */
+.bank-card-bs {
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(200, 85, 43, 0.12), transparent 55%),
+    linear-gradient(135deg, var(--bs-card-bg) 0%, var(--bs-card-cap-bg) 100%) !important;
+  border: 1px solid var(--bs-primary) !important;
+  border-radius: var(--bs-border-radius-lg);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px -12px rgba(91, 79, 68, 0.15) !important;
+}
+
+.bank-card-bs::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 55%;
+  height: 180%;
+  background: linear-gradient(115deg, transparent, rgba(200, 85, 43, 0.04), transparent);
+  transform: rotate(12deg);
+  pointer-events: none;
+}
+
+/* Modals & Toast Notifications */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  transform: translateY(-20px);
+  transition: transform 0.25s ease;
+}
+
+.modal-overlay.active .modal-card {
+  transform: translateY(0);
+}
+
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 380px;
+  width: calc(100% - 3rem);
+}
+
+.toast {
+  padding: 0.85rem 1.15rem;
+  border-radius: var(--bs-border-radius-sm);
+  box-shadow: 0 0.5rem 1rem rgba(91, 79, 68, 0.15) !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: toastSlideIn 0.3s ease forwards;
+}
+
+.toast-success {
+  background-color: #e2f0e9 !important;
+  color: #1d7b5c !important;
+  border: 1px solid rgba(29, 123, 92, 0.3) !important;
+}
+
+.toast-error {
+  background-color: #fbebeb !important;
+  color: #b33939 !important;
+  border: 1px solid rgba(179, 57, 57, 0.3) !important;
+}
+
+.toast-info {
+  background-color: #fff2eb !important;
+  color: #c8552b !important;
+  border: 1px solid rgba(200, 85, 43, 0.3) !important;
+}
+
+@keyframes laserScan {
+  0% { top: 10%; opacity: 0.2; }
+  50% { top: 85%; opacity: 1; }
+  100% { top: 10%; opacity: 0.2; }
+}
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  #toast-container {
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    bottom: 1rem;
+  }
+}
+
+/* ==========================================================================
+   IMPECCABLE / LUMINA CUSTOM OVERRIDES & REFLEXES
+   ========================================================================== */
+
+/* Display Typography (Serif headings) */
+h1, h2, h3, h4, .serif-heading, .logo {
+  font-family: 'Fraunces', Georgia, serif !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.015em !important;
+}
+
+/* Base Body Font Override */
+body, p, label, span, td, th, input, button {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Overriding white text values to dark ink */
+.text-white, .btn-bs-primary, h1, h2, h3, h4, th, td, label {
+  color: var(--bs-heading-color) !important;
+}
+
+/* Muted text colours to soft terracotta/brown */
+.text-gray-300 {
+  color: var(--bs-body-color) !important;
+}
+.text-gray-400 {
+  color: var(--bs-secondary-color) !important;
+}
+
+/* Forms & Text Fields formatting */
+.bs-input {
+  background-color: #ffffff !important;
+  border: 1px solid var(--bs-border-color) !important;
+  color: var(--bs-body-color) !important;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem !important;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+.bs-input:focus {
+  background-color: #ffffff !important;
+  border-color: var(--bs-primary) !important;
+  box-shadow: 0 0 0 3px rgba(200, 85, 43, 0.15) !important;
+}
+
+/* Primary buttons - Deep ink with cream warm text */
+.btn-bs-primary, .btn-bs-primary:hover {
+  background-image: none !important;
+  background-color: var(--bs-heading-color) !important;
+  color: var(--bs-card-bg) !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--bs-heading-color) !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+.btn-bs-primary:hover {
+  filter: brightness(1.2) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Secondary buttons - Ghost / outlined style */
+.btn-bs-secondary, .btn-bs-secondary:hover {
+  background-image: none !important;
+  background-color: transparent !important;
+  color: var(--bs-body-color) !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--bs-border-color) !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+.btn-bs-secondary:hover {
+  background-color: rgba(91, 79, 68, 0.08) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Success buttons - Terracotta style */
+.btn-bs-success, .btn-bs-success:hover {
+  background-image: none !important;
+  background-color: var(--bs-primary) !important;
+  color: var(--bs-body-bg) !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--bs-primary) !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+.btn-bs-success:hover {
+  filter: brightness(1.1) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Intro Overlay background update */
+#intro-overlay {
+  background-color: var(--bs-body-bg) !important;
+}
+
+/* Ensure no gray or white elements are camouflaged on the light cream background */
+.text-gray-100, .text-gray-200, .text-gray-300 {
+  color: var(--bs-body-color) !important;
+}
+.text-gray-400, .text-gray-500, .text-gray-600 {
+  color: var(--bs-secondary-color) !important;
+}
+
+/* High-contrast alert overrides for light mode readability */
+.bg-yellow-900\/30, .bg-yellow-900 {
+  background-color: #fef9c3 !important; /* Soft yellow bg */
+  border-color: #facc15 !important;
+  color: #854d0e !important; /* Dark brown/gold text */
+}
+
+.bg-red-900\/30, .bg-red-900 {
+  background-color: #fee2e2 !important; /* Soft red bg */
+  border-color: #fca5a5 !important;
+  color: #991b1b !important; /* Dark red text */
+}
+
+.bg-emerald-950\/20, .bg-emerald-950 {
+  background-color: #ecfdf5 !important; /* Soft green bg */
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important; /* Dark green text */
+}
+
+/* Eye-Catching Cursor Particle Trail */
+.cursor-trail-dot {
+  position: fixed;
+  width: 9px;
+  height: 9px;
+  background-color: var(--bs-primary); /* dynamic var matching theme primary */
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  mix-blend-mode: multiply;
+  opacity: 0.75;
+}
+
+.dark .cursor-trail-dot {
+  mix-blend-mode: screen; /* dynamic dark blend mode */
+  box-shadow: 0 0 8px var(--bs-primary); /* glowing red effect in dark mode */
+}
+
+@keyframes cursorTrailFade {
+  0% {
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.1); /* float upward and shrink */
+  }
+}
+
+/* Dark theme warning alert overrides */
+.dark .bg-yellow-900\/30, .dark .bg-yellow-900 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #fbbf24 !important;
+}
+.dark .bg-red-900\/30, .dark .bg-red-900 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  color: #fca5a5 !important;
+}
+.dark .bg-emerald-950\/20, .dark .bg-emerald-950 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  color: #34d399 !important;
+}
+
+/* High-contrast text input utilities for light and dark modes */
+.text-emerald-300 {
+  color: #059669 !important; /* Rich green in light mode */
+}
+.dark .text-emerald-300 {
+  color: #a7f3d0 !important; /* Soft green in dark mode */
+}
+
+.text-purple-200 {
+  color: #7c3aed !important; /* Rich purple in light mode */
+}
+.dark .text-purple-200 {
+  color: #ddd6fe !important; /* Soft purple in dark mode */
+}
+
+.text-blue-300 {
+  color: var(--bs-primary) !important;
+}
+
+.text-red-300 {
+  color: #dc2626 !important;
+}
+.dark .text-red-300 {
+  color: #fca5a5 !important;
+}
+
+/* ABSOLUTE FORCE OVERRIDE FOR INPUT TEXT AND PLACEHOLDERS TO BE DARK SLATE GREY WITH CRISP WHITE TYPED TEXT */
+input, select, textarea,
+.bs-input,
+input.bs-input,
+.dark input,
+.dark select,
+.dark textarea,
+.dark .bs-input,
+.dark input.bs-input {
+  background-color: #171b26 !important;
+  border: 1px solid var(--bs-border-color) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-radius: 12px !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+.bs-input::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder,
+.dark .bs-input::placeholder {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  opacity: 0.85 !important;
+}
+
+input:focus, select:focus, textarea:focus,
+.bs-input:focus, input.bs-input:focus {
+  background-color: #1a1f2e !important;
+  border-color: var(--bs-primary) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+}
+
+/* Force Android Chrome autofill states to be dark slate grey background and white text */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+.bs-input:-webkit-autofill,
+.bs-input:-webkit-autofill:hover,
+.bs-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #171b26 inset !important;
+  box-shadow: 0 0 0px 1000px #171b26 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Dorito Vault — Passwordless Authentication Core{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-lg mx-auto space-y-5">
+
+  <!-- Authenticated Active Session Banner -->
+  <div id="auth-banner" class="hidden bs-card p-5 rounded-xl border-blue-500/40 text-center animate-fade-in">
+    <div class="inline-flex p-2.5 rounded-lg bg-blue-600/20 text-blue-400 mb-2 border border-blue-500/30">
+      <i class="fas fa-user-shield text-xl"></i>
+    </div>
+    <h3 class="text-base font-bold text-white">Active Vault Session</h3>
+    <p class="text-xs text-gray-400 mt-1">Your device holds an active cryptographic session token.</p>
+    <div class="mt-4 flex items-center justify-center gap-2">
+      <a href="/dashboard" class="px-4 py-2 rounded btn-bs-primary text-xs font-bold flex items-center gap-1.5">
+        <i class="fas fa-vault"></i> Open Dashboard
+      </a>
+      <button onclick="handleLogout()" class="px-4 py-2 rounded btn-bs-secondary text-xs font-semibold">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Main Professional Login Terminal Card -->
+  <div id="login-card" class="bs-card p-6 sm:p-7 rounded-xl relative overflow-hidden">
+
+    <!-- Header Title -->
+    <div class="text-center mb-5">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase font-mono-code mb-2">
+        <i class="fas fa-shield text-[10px]"></i> Bootstrap Security Core
+      </div>
+      <h2 class="text-2xl font-bold tracking-tight text-white">Dorito Vault Access</h2>
+      <p class="text-xs text-gray-400 mt-1">Hardware passkeys, hashed email OTP, and mobile QR sync.</p>
+    </div>
+
+    <!-- Biometric Scanner Visualizer Widget -->
+    <div class="mb-5">
+      <div id="scanner-hud-widget" class="scanner-hud active">
+        <div class="scanner-laser"></div>
+        <i class="fas fa-fingerprint text-2xl text-blue-400"></i>
+      </div>
+    </div>
+
+    <!-- Mode Switcher Tabs -->
+    <div class="flex border-b border-gray-800 mb-5">
+      <button id="tab-login-btn" onclick="switchTab('login')" class="flex-1 py-2.5 text-center text-sm font-semibold border-b-2 border-blue-500 text-blue-400 transition-all flex items-center justify-center gap-1.5">
+        <i class="fas fa-fingerprint"></i> Sign In
+      </button>
+      <button id="tab-reg-btn" onclick="switchTab('register')" class="flex-1 py-2.5 text-center text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-all flex items-center justify-center gap-1.5">
+        <i class="fas fa-user-plus"></i> Register
+      </button>
+    </div>
+
+    <!-- TAB 1: SIGN IN TERMINAL -->
+    <div id="form-login" class="space-y-4">
+      
+      <!-- Account Email Input -->
+      <div>
+        <label for="login-email" class="block text-xs font-bold text-gray-300 mb-1 uppercase tracking-wider">Account Email</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-400">
+            <i class="fas fa-envelope text-xs"></i>
+          </span>
+          <input type="email" id="login-email" placeholder="customer@securebank.com" class="w-full pl-9 pr-3 py-2.5 bs-input text-xs font-mono-code placeholder-gray-500 focus:outline-none" required />
+        </div>
+      </div>
+
+      <!-- Authentication Factor Selection Cards -->
+      <div class="space-y-3 pt-1">
+
+        <!-- Factor 1: Biometric Passkey / WebAuthn HUD -->
+        <div class="p-3.5 rounded-lg bg-gray-800/80 border border-gray-700 hover:border-gray-600 transition-all">
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded bg-blue-500/20 text-blue-400 text-xs">
+                <i class="fas fa-fingerprint"></i>
+              </span>
+              <div>
+                <h4 class="text-xs font-bold text-white">Hardware Passkey</h4>
+                <p class="text-[11px] text-gray-400">TouchID, FaceID, YubiKey, Windows Hello</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold">Primary</span>
+          </div>
+
+          <button id="btn-webauthn-login" onclick="handleWebAuthnLogin(event)" class="w-full py-2.5 px-3 rounded btn-bs-primary flex items-center justify-center gap-2 text-xs font-bold">
+            <i class="fas fa-shield-cat"></i>
+            <span>Authenticate with Passkey</span>
+          </button>
+        </div>
+
+        <!-- Factor 2: Email OTP -->
+        <div class="p-3.5 rounded-lg bg-gray-800/80 border border-gray-700 hover:border-gray-600 transition-all">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded bg-emerald-500/20 text-emerald-400 text-xs">
+                <i class="fas fa-envelope-open-text"></i>
+              </span>
+              <div>
+                <h4 class="text-xs font-bold text-white">Hashed Email Code</h4>
+                <p class="text-[11px] text-gray-400">5-minute ephemeral bcrypt OTP</p>
+              </div>
+            </div>
+            <button id="btn-send-otp" onclick="handleSendOTP()" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition-all">
+              Send Code
+            </button>
+          </div>
+
+          <!-- OTP Input Form -->
+          <div id="otp-section" class="hidden pt-2.5 border-t border-gray-700 space-y-2 animate-fade-in">
+            <label for="otp-code" class="block text-xs font-semibold text-emerald-400">Enter 6-Digit Code</label>
+            <div class="flex gap-2">
+              <input type="text" id="otp-code" maxlength="6" placeholder="123456" class="w-full px-3 py-2 bs-input text-center tracking-widest font-mono-code text-sm text-emerald-300 focus:outline-none" />
+              <button id="btn-verify-otp" onclick="handleVerifyOTP(event)" class="py-2 px-4 rounded btn-bs-success text-xs font-bold flex-shrink-0">
+                Verify & Login
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Factor 3: QR Cross-Device Login -->
+        <div class="p-3.5 rounded-lg bg-gray-800/80 border border-gray-700 hover:border-gray-600 transition-all">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded bg-blue-500/20 text-blue-300 text-xs">
+                <i class="fas fa-qrcode"></i>
+              </span>
+              <div>
+                <h4 class="text-xs font-bold text-white">QR Cross-Device Sync</h4>
+                <p class="text-[11px] text-gray-400">Authorize untrusted terminal via phone</p>
+              </div>
+            </div>
+            <button onclick="toggleQrSection()" class="px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs font-bold text-gray-200 transition-all">
+              Show QR
+            </button>
+          </div>
+
+          <!-- QR Code Display Box -->
+          <div id="qr-section" class="hidden pt-3 border-t border-gray-700 text-center space-y-2.5 animate-fade-in">
+            <p class="text-xs text-gray-300">Scan this QR code with your logged-in mobile phone:</p>
+            
+            <div class="flex justify-center py-1">
+              <div id="qr-container" class="p-2.5 bg-white rounded-lg shadow inline-block"></div>
+            </div>
+
+            <div class="flex items-center justify-center gap-2 text-xs text-blue-400 font-mono-code">
+              <span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+              <span id="qr-status-text">Generating token...</span>
+            </div>
+
+            <div class="p-2.5 rounded bg-gray-800 border border-gray-700 text-[11px] text-gray-300">
+              <i class="fas fa-circle-info mr-1"></i> Testing locally? Click <strong>"Approve QR"</strong> in navbar to simulate your phone!
+            </div>
+          </div>
+        </div>
+
+        <!-- Factor 4: Account Recovery Code -->
+        <div class="p-3.5 rounded-lg bg-gray-800/80 border border-gray-700 hover:border-gray-600 transition-all">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded bg-purple-500/20 text-purple-300 text-xs">
+                <i class="fas fa-life-ring"></i>
+              </span>
+              <div>
+                <h4 class="text-xs font-bold text-white">Emergency Recovery Code</h4>
+                <p class="text-[11px] text-gray-400">Single-use backup code (e.g. A1B2-C3D4)</p>
+              </div>
+            </div>
+            <button onclick="toggleRecoverySection()" class="px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs font-bold text-gray-200 transition-all">
+              Use Code
+            </button>
+          </div>
+
+          <!-- Recovery Code Input Box -->
+          <div id="recovery-section" class="hidden pt-3 border-t border-gray-700 space-y-2 animate-fade-in">
+            <label for="recovery-code-input" class="block text-xs font-semibold text-purple-300">Enter Backup Code</label>
+            <div class="flex gap-2">
+              <input type="text" id="recovery-code-input" placeholder="A1B2-C3D4" class="w-full px-3 py-2 bs-input text-center font-mono-code text-xs text-purple-200 focus:outline-none uppercase" />
+              <button onclick="handleVerifyRecoveryCode(event)" class="py-2 px-4 rounded bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex-shrink-0">
+                Authenticate
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 2: REGISTER NEW ACCOUNT FORM (STRICT 3-STEP SEQUENTIAL WORKFLOW) -->
+    <div id="form-reg" class="hidden space-y-3.5">
+
+      <!-- STEP 1: ENTER EMAIL & REQUEST VERIFICATION CODE -->
+      <div id="reg-step-1" class="space-y-3.5">
+        <div>
+          <label for="reg-name" class="block text-xs font-bold text-gray-300 mb-1 uppercase tracking-wider">Full Name</label>
+          <input type="text" id="reg-name" placeholder="Alice Smith" class="w-full px-3 py-2.5 bs-input text-xs font-mono-code focus:outline-none" required />
+        </div>
+
+        <div>
+          <label for="reg-email" class="block text-xs font-bold text-gray-300 mb-1 uppercase tracking-wider">Email Address</label>
+          <input type="email" id="reg-email" placeholder="alice@securebank.com" class="w-full px-3 py-2.5 bs-input text-xs font-mono-code focus:outline-none" required />
+        </div>
+
+        <button id="btn-send-verification-code" onclick="handleSendVerificationStep(event)" class="w-full py-2.5 px-4 rounded btn-bs-primary flex items-center justify-center gap-2 text-xs font-bold mt-1">
+          <i class="fas fa-paper-plane"></i> Step 1: Send Verification Code to Email
+        </button>
+      </div>
+
+      <!-- STEP 2: VERIFY 6-DIGIT EMAIL CODE -->
+      <div id="reg-step-2" class="hidden p-4 rounded-lg bg-emerald-900/20 border border-emerald-500/30 space-y-3 animate-fade-in">
+        <div class="flex items-center gap-2 text-xs font-bold text-emerald-400">
+          <i class="fas fa-envelope-circle-check text-base"></i> Step 2: Verify Registration Email
+        </div>
+        <p class="text-[11px] text-gray-300">
+          A 6-digit verification code has been sent to your inbox. Enter it below to verify your email address.
+        </p>
+        <div class="space-y-2">
+          <input type="text" id="email-verify-code-input" maxlength="6" placeholder="123456" class="w-full px-3 py-2.5 bs-input text-center font-mono-code text-base tracking-widest text-emerald-300 focus:outline-none" />
+          <button id="btn-submit-email-verify" onclick="handleVerifyEmailStep(event)" class="w-full py-2.5 px-4 rounded btn-bs-success text-xs font-bold flex items-center justify-center gap-2">
+            <i class="fas fa-check-circle"></i> Verify Code & Continue
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: SETUP WEBAUTHN PASSKEY & FINISH REGISTRATION -->
+      <div id="reg-step-3" class="hidden p-4 rounded-lg bg-blue-900/20 border border-blue-500/30 space-y-3 animate-fade-in">
+        <div class="flex items-center gap-2 text-xs font-bold text-blue-400">
+          <i class="fas fa-shield-cat text-base"></i> Step 3: Setup Hardware Passkey (WebAuthn)
+        </div>
+        <p class="text-[11px] text-gray-300">
+          Email verified! Optionally bind TouchID, Windows Hello, or YubiKey biometrics for instant passwordless logins.
+        </p>
+        <div class="space-y-2">
+          <button id="btn-setup-passkey-step" onclick="handlePasskeySetupStep(event)" class="w-full py-2.5 px-4 rounded btn-bs-primary text-xs font-bold flex items-center justify-center gap-2">
+            <i class="fas fa-fingerprint"></i> Register Hardware Passkey
+          </button>
+          <button onclick="finishRegistrationWorkflow()" class="w-full py-2 px-3 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold">
+            Skip Passkey & Complete Registration
+          </button>
+        </div>
+      </div>
+
+      <p class="text-[11px] text-gray-400 text-center mt-1">
+        Zero passwords stored. Authentication relies on public key cryptography.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- Security Feature Badges -->
+  <div class="grid grid-cols-3 gap-3 text-center">
+    <div class="bs-card p-3 rounded-lg border-gray-800">
+      <i class="fas fa-shield-cat text-blue-400 text-lg mb-1"></i>
+      <p class="text-xs font-bold text-gray-200">FIDO2 Passkeys</p>
+      <p class="text-[10px] text-gray-500 font-mono-code">Hardware-Bound</p>
+    </div>
+    <div class="bs-card p-3 rounded-lg border-gray-800">
+      <i class="fas fa-fingerprint text-emerald-400 text-lg mb-1"></i>
+      <p class="text-xs font-bold text-gray-200">Zero Passwords</p>
+      <p class="text-[10px] text-gray-500 font-mono-code">Phishing Proof</p>
+    </div>
+    <div class="bs-card p-3 rounded-lg border-gray-800">
+      <i class="fas fa-key text-blue-300 text-lg mb-1"></i>
+      <p class="text-xs font-bold text-gray-200">Bcrypt Hashed</p>
+      <p class="text-[10px] text-gray-500 font-mono-code">5-Min OTP</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

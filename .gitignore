@@ -1,0 +1,24 @@
+# Never commit these
+.env
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+devices/
+sql_app.db
+*.db
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Alembic
+alembic/versions/*.pyc
+*.zip
+db.sqlite3
+*.sqlite3
+.agents/
