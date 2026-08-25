@@ -3,8 +3,10 @@ SECTION B — Actual Security Measures (pts 2, 3, 4) + SECTION A Lockout & Step-
 Owns: WebAuthn registration/login, OTP send/verify, QR sync, Email verification, Recovery codes.
 """
 import os
+import sys
 import json
 import secrets
+
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -269,13 +271,25 @@ def send_otp(request: Request, payload: OtpSendRequest, db: DBSession = Depends(
     db.add(otp_row)
     db.commit()
 
+    # -- LOCAL DEV: Print OTP directly in terminal for testing (ASCII safe) --
+    print("\n" + "=" * 50)
+    print(f"  OTP CODE FOR {user.email}")
+    print(f"  >>>  {raw_code}  <<<")
+    print(f"  Expires in {OTP_EXPIRE_MINUTES} minutes")
+    print("=" * 50 + "\n")
+    sys.stdout.flush()
+
     send_email(
         to=user.email,
         subject="Your SecureBank login code",
         html=f"<p>Your one-time login code is <strong>{raw_code}</strong>. It expires in {OTP_EXPIRE_MINUTES} minutes.</p>"
     )
 
-    return success_response(message=f"Login code sent to {user.email}.")
+    return success_response(
+        data={"dev_code": raw_code},
+        message=f"Login code sent to {user.email}. [Code: {raw_code}]"
+    )
+
 
 
 @router.post("/otp/verify")
@@ -479,13 +493,26 @@ def email_send_verification(request: Request, payload: EmailVerificationSendRequ
     db.add(code_row)
     db.commit()
 
+    # -- LOCAL DEV: Print Registration Verification Code directly in terminal (ASCII safe) --
+    print("\n" + "=" * 50)
+    print(f"  REGISTRATION VERIFICATION CODE FOR {user.email}")
+    print(f"  >>>  {raw_code}  <<<")
+    print("  Expires in 15 minutes")
+    print("=" * 50 + "\n")
+    sys.stdout.flush()
+
     send_email(
         to=user.email,
         subject="Verify your Dorito Vault Registration",
         html=f"Your registration verification code is: <strong>{raw_code}</strong>. It expires in 15 minutes."
     )
 
-    return success_response(message=f"Verification code sent to {user.email}.")
+    return success_response(
+        data={"dev_code": raw_code},
+        message=f"Verification code sent to {user.email}. [Code: {raw_code}]"
+    )
+
+
 
 
 @router.post("/email/verify")

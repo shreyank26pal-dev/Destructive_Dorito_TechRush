@@ -27,8 +27,9 @@ def error_response(message: str, data: Any = None) -> dict:
 # --- Section A request bodies ---
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    email: str
     name: Optional[str] = None
+
 
 
 class CheckDeviceRequest(BaseModel):
@@ -79,16 +80,16 @@ class OtpVerifyRequest(BaseModel):
 
 
 class WebAuthnRegisterVerifyRequest(BaseModel):
-    email: EmailStr
+    email: str
     credential: dict
 
 
 class WebAuthnLoginOptionsRequest(BaseModel):
-    email: EmailStr
+    email: str
 
 
 class WebAuthnLoginVerifyRequest(BaseModel):
-    email: EmailStr
+    email: str
     credential: dict
     device_fingerprint: Optional[str] = None
 
@@ -101,13 +102,13 @@ class QrGenerateRequest(BaseModel):
 
 class QrApproveRequest(BaseModel):
     token: str
-    email: EmailStr
+    email: str
 
 
 # --- Section B / Section A: step-up auth ---
 
 class StepUpVerifyRequest(BaseModel):
-    email: EmailStr
+    email: str
     code: str
     challenge_id: Optional[str] = None
 
@@ -120,20 +121,20 @@ class StepUpChallengeRequest(BaseModel):
 # --- Section B: Email Verification & Backup Recovery Codes ---
 
 class EmailVerificationSendRequest(BaseModel):
-    email: EmailStr
+    email: str
 
 
 class EmailVerificationVerifyRequest(BaseModel):
-    email: EmailStr
+    email: str
     code: str
 
 
 class RecoveryCodeGenerateRequest(BaseModel):
-    email: EmailStr
+    email: str
 
 
 class RecoveryCodeVerifyRequest(BaseModel):
-    email: EmailStr
+    email: str
     code: str
     device_fingerprint: Optional[str] = None
 

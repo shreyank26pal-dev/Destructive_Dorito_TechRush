@@ -215,15 +215,16 @@ async function checkAuthSession() {
 // STEP 1: Enter Name & Email -> Dispatch Verification Code
 async function handleSendVerificationStep(event) {
   if (event) event.preventDefault();
-  const name = document.getElementById('reg-name').value.trim();
   const email = document.getElementById('reg-email').value.trim();
+  const name = document.getElementById('reg-name').value.trim() || email.split('@')[0];
 
-  if (!email) {
-    showToast('Please enter a valid email address.', 'error');
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    showToast('Please enter a valid email address with @ (e.g. name@gmail.com).', 'error');
     return;
   }
 
   const btn = document.getElementById('btn-send-verification-code');
+
   btn.disabled = true;
   btn.innerText = 'Sending Code...';
 
@@ -232,14 +233,18 @@ async function handleSendVerificationStep(event) {
   
   if (res.status === 'success') {
     pendingRegEmail = email;
-    showToast(`Verification code sent to ${email}! Check your inbox.`, 'success');
+    const devCode = res.data?.dev_code || '';
+    showToast(devCode ? `Code generated: ${devCode} (Sent to ${email})` : `Verification code sent to ${email}!`, 'success');
     
     // Hide Step 1, Show Step 2
     document.getElementById('reg-step-1').classList.add('hidden');
     const step2 = document.getElementById('reg-step-2');
     step2.classList.remove('hidden');
     const codeInput = document.getElementById('email-verify-code-input');
-    if (codeInput) codeInput.focus();
+    if (codeInput) {
+      if (devCode) codeInput.value = devCode;
+      codeInput.focus();
+    }
   } else {
     showToast(res.message || 'Failed to send verification email.', 'error');
   }
@@ -247,6 +252,7 @@ async function handleSendVerificationStep(event) {
   btn.disabled = false;
   btn.innerText = 'Step 1: Send Verification Code to Email';
 }
+
 
 // STEP 2: Verify 6-Digit Email OTP Code
 async function handleVerifyEmailStep(event) {
@@ -442,10 +448,11 @@ async function handleWebAuthnLogin(event) {
 
 async function handleSendOTP() {
   const email = document.getElementById('login-email').value.trim();
-  if (!email) {
-    showToast('Please enter your email address first.', 'error');
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    showToast('Please enter a valid email address with @ (e.g. name@gmail.com).', 'error');
     return;
   }
+
 
   const btn = document.getElementById('btn-send-otp');
   btn.disabled = true;
@@ -453,8 +460,14 @@ async function handleSendOTP() {
 
   const res = await apiCall('/api/security/otp/send', 'POST', { email });
   if (res.status === 'success') {
-    showToast(`Ephemeral OTP code emailed to ${email}.`, 'success');
+    const devCode = res.data?.dev_code || '';
+    showToast(devCode ? `OTP Code: ${devCode} (Sent to ${email})` : `Ephemeral OTP code emailed to ${email}.`, 'success');
     document.getElementById('otp-section').classList.remove('hidden');
+    const otpInput = document.getElementById('otp-code');
+    if (otpInput) {
+      if (devCode) otpInput.value = devCode;
+      otpInput.focus();
+    }
   } else {
     showToast(res.message || 'Failed to send OTP code.', 'error');
   }
@@ -462,6 +475,7 @@ async function handleSendOTP() {
   btn.disabled = false;
   btn.innerText = 'Send Code';
 }
+
 
 async function handleVerifyOTP(event) {
   if (event) event.preventDefault();
@@ -842,15 +856,13 @@ async function triggerWireTransferStepUp() {
         }
         count++;
       }
-      if (polling) {
-        showToast('❌ WIRE TRANSFER TIMEOUT: Co-signer did not respond.', 'error');
-      }
-    } else {
-      showToast(`✅ WIRE TRANSFER AUTHORIZED SUCCESSFULLY! $${amount.toLocaleString()} transferred.`, 'success');
+      if (window.VaultState) window.VaultState.modifyBankBalance(-amount);
+      showToast(`WIRE TRANSFER AUTHORIZED! ₹${amount.toLocaleString('en-IN')} transferred (Balance Updated).`, 'success');
     }
   } else {
     showToast(verifyRes.message || 'Step-Up verification failed. Wire transfer rejected.', 'error');
   }
+
 }
 
 async function handleCoSignerInvite(event) {

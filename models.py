@@ -234,3 +234,100 @@ class CoSignerApprovalRequest(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
     resolved_at = Column(DateTime, nullable=True)
+
+
+# ==========================================================================
+# FINTECH & COMMERCE EXTENSION MODELS (UPI, Lending, Gold, Escrow, Merchant)
+# ==========================================================================
+
+class UPITransaction(Base):
+    """UPI 2.0 Biometric Passkey Payments & Commerce"""
+    __tablename__ = "upi_transactions"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    vpa = Column(String, nullable=False)  # e.g., merchant@okicici
+    merchant_name = Column(String, nullable=False)
+    amount = Column(Integer, nullable=False)  # in INR
+    app_used = Column(String, default="Google Pay")  # Google Pay | PhonePe | Paytm | BHIM
+    biometric_verified = Column(Boolean, default=True)
+    tx_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class CreditLine(Base):
+    """Instant Micro-Lending & Vault Trust Credit Health"""
+    __tablename__ = "credit_lines"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
+    credit_score = Column(Integer, default=785)
+    total_limit = Column(Integer, default=50000)
+    used_amount = Column(Integer, default=0)
+    status = Column(String, default="active")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class MicroLoan(Base):
+    """1-Click Emergency Micro-Loans"""
+    __tablename__ = "micro_loans"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    loan_amount = Column(Integer, nullable=False)
+    tenure_months = Column(Integer, default=6)
+    monthly_emi = Column(Integer, nullable=False)
+    status = Column(String, default="disbursed")  # disbursed | repaid
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class GoldVault(Base):
+    """Spare-Change Round-Up & 24K Digital Gold Investing"""
+    __tablename__ = "gold_vaults"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
+    gold_grams = Column(Integer, default=342)  # 3.42 grams * 100
+    total_invested = Column(Integer, default=24500)
+    roundup_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class EscrowDeal(Base):
+    """Biometric Co-Signed Escrow Commerce Deals"""
+    __tablename__ = "escrow_deals"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    buyer_id = Column(String, ForeignKey("users.id"), nullable=False)
+    seller_email = Column(String, nullable=False)
+    item_title = Column(String, nullable=False)
+    amount = Column(Integer, nullable=False)
+    status = Column(String, default="locked")  # locked | buyer_approved | seller_approved | released
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    buyer = relationship("User")
+
+
+class MerchantInvoice(Base):
+    """1-Click Digital Invoices & Commerce Analytics"""
+    __tablename__ = "merchant_invoices"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    merchant_id = Column(String, ForeignKey("users.id"), nullable=False)
+    client_name = Column(String, nullable=False)
+    client_email = Column(String, nullable=False)
+    amount = Column(Integer, nullable=False)
+    item_description = Column(String, nullable=False)
+    status = Column(String, default="unpaid")  # unpaid | paid
+    payment_link = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    merchant = relationship("User")
