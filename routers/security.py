@@ -286,9 +286,10 @@ def send_otp(request: Request, payload: OtpSendRequest, db: DBSession = Depends(
     )
 
     return success_response(
-        data={"dev_code": raw_code},
-        message=f"Login code sent to {user.email}. [Code: {raw_code}]"
+        data={"email": user.email},
+        message=f"Login code sent to {user.email}. Please check your email inbox."
     )
+
 
 
 
@@ -508,9 +509,10 @@ def email_send_verification(request: Request, payload: EmailVerificationSendRequ
     )
 
     return success_response(
-        data={"dev_code": raw_code},
-        message=f"Verification code sent to {user.email}. [Code: {raw_code}]"
+        data={"email": user.email},
+        message=f"Verification code sent to {user.email}. Please check your email inbox."
     )
+
 
 
 

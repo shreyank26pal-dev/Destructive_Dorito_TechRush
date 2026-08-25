@@ -233,8 +233,7 @@ async function handleSendVerificationStep(event) {
   
   if (res.status === 'success') {
     pendingRegEmail = email;
-    const devCode = res.data?.dev_code || '';
-    showToast(devCode ? `Code generated: ${devCode} (Sent to ${email})` : `Verification code sent to ${email}!`, 'success');
+    showToast(`Verification code sent to ${email}. Please check your email inbox.`, 'success');
     
     // Hide Step 1, Show Step 2
     document.getElementById('reg-step-1').classList.add('hidden');
@@ -242,7 +241,7 @@ async function handleSendVerificationStep(event) {
     step2.classList.remove('hidden');
     const codeInput = document.getElementById('email-verify-code-input');
     if (codeInput) {
-      if (devCode) codeInput.value = devCode;
+      codeInput.value = '';
       codeInput.focus();
     }
   } else {
@@ -460,12 +459,11 @@ async function handleSendOTP() {
 
   const res = await apiCall('/api/security/otp/send', 'POST', { email });
   if (res.status === 'success') {
-    const devCode = res.data?.dev_code || '';
-    showToast(devCode ? `OTP Code: ${devCode} (Sent to ${email})` : `Ephemeral OTP code emailed to ${email}.`, 'success');
+    showToast(`Ephemeral OTP code emailed to ${email}. Please check your inbox.`, 'success');
     document.getElementById('otp-section').classList.remove('hidden');
     const otpInput = document.getElementById('otp-code');
     if (otpInput) {
-      if (devCode) otpInput.value = devCode;
+      otpInput.value = '';
       otpInput.focus();
     }
   } else {
