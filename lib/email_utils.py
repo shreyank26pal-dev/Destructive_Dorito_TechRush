@@ -40,10 +40,16 @@ def send_email(to_email: str = None, subject: str = "", body: str = "", to: str 
             import resend
             resend.api_key = resend_key
             
-            configured_sender = os.getenv("SENDER_EMAIL", "Dorito Vault Security <onboarding@resend.dev>")
-            senders_to_try = [configured_sender]
-            if configured_sender != "Dorito Vault Security <onboarding@resend.dev>":
-                senders_to_try.append("Dorito Vault Security <onboarding@resend.dev>")
+            configured_sender = os.getenv("SENDER_EMAIL", "Dorito Vault Security <security@doritovault.in>")
+            senders_to_try = [
+                configured_sender,
+                "Dorito Vault Security <security@doritovault.in>",
+                "Dorito Vault Security <security@send.doritovault.in>",
+                "Dorito Vault Security <onboarding@resend.dev>"
+            ]
+            # Deduplicate while preserving order
+            senders_to_try = list(dict.fromkeys(senders_to_try))
+
 
             last_error = None
             for sender in senders_to_try:
